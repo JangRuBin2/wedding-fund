@@ -17,6 +17,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   경조사: "#a1824f",
   기타: "#aab2bd",
   환불: "#1f5fd1",
+  저축: "#1f5fd1",
 };
 
 export const colorOf = (c: string) => CATEGORY_COLORS[c] ?? "#aab2bd";

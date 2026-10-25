@@ -102,6 +102,42 @@ async function main() {
       if (at.getTime() <= now) await ingestNotification({ packageName: "com.kbstar.kbbank", title: "KB국민은행", text: `${String(d.getUTCMonth() + 1).padStart(2, "0")}/01 11:00 출금 650,000원 월세 잔액 2,100,000원`, postedAt: at.getTime(), memberName: "민준" });
     }
   }
+  // 매달 26일 적금 이체 → '저축'으로 자동 분류돼서 집계 제외
+  for (let t = start; t <= now; t += DAY) {
+    const d = new Date(t + 9 * 3600_000);
+    if (d.getUTCDate() !== 26) continue;
+    const at = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 9, 5) - 9 * 3600_000);
+    const md = `${String(d.getUTCMonth() + 1).padStart(2, "0")}/26`;
+    await ingestNotification({ packageName: "com.kbstar.kbbank", title: "KB국민은행", text: `${md} 09:05 출금 1,000,000원 카카오뱅크적금 잔액 1,450,000원`, postedAt: at.getTime(), memberName: "민준" });
+  }
+
+  // 결혼준비 계약금 (생활비·넛지에서 빠지고 목표 진행에는 포함)
+  for (const [daysAgo, amount, m] of [
+    [64, 1_100_000, "아이엠웨딩 스튜디오"],
+    [33, 2_000_000, "더채플 예식홀"],
+  ] as const) {
+    const at = new Date(now - daysAgo * DAY);
+    await ingestNotification({ ...cardText("신한", amount, m, at), postedAt: at.getTime(), memberName: "민준" });
+  }
+
+  // 결혼 예산표
+  if ((await prisma.weddingItem.count()) === 0) {
+    const due = (days: number) => new Date(now + days * DAY);
+    await prisma.weddingItem.createMany({
+      data: [
+        { name: "예식장 (대관·식대)", group: "예식", budget: 14_000_000, paid: 2_000_000, dueDate: due(395) },
+        { name: "청첩장·모바일 청첩장", group: "예식", budget: 600_000, paid: 0, dueDate: due(330) },
+        { name: "스튜디오·드레스·메이크업", group: "스드메", budget: 3_300_000, paid: 1_100_000, dueDate: due(48) },
+        { name: "본식 스냅·영상", group: "스드메", budget: 1_800_000, paid: 0, dueDate: due(21) },
+        { name: "예물", group: "예물·예단", budget: 5_000_000, paid: 0 },
+        { name: "예단·한복", group: "예물·예단", budget: 0, paid: 0 },
+        { name: "신혼여행", group: "신혼여행", budget: 8_000_000, paid: 0, dueDate: due(300) },
+        { name: "가전", group: "신혼집·혼수", budget: 9_000_000, paid: 0 },
+        { name: "가구", group: "신혼집·혼수", budget: 5_000_000, paid: 0 },
+      ],
+    });
+  }
+
   // 파서가 애매하게 잡는 케이스 하나 → '확인 필요' 데모
   await ingestNotification({ packageName: "com.lcacApp", title: "롯데카드", text: "롯데카드 결제 32,000원", postedAt: now - 2 * 3600_000, memberName: "민준" });
 

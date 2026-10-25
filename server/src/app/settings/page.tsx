@@ -44,7 +44,7 @@ export default async function Settings() {
             <input name="startDate" type="date" required defaultValue={dateInput(goal?.startDate ?? now)} className="input" />
           </label>
           <label className="space-y-1">
-            <span className="label">목표일</span>
+            <span className="label">목표일 (결혼식 날)</span>
             <input name="targetDate" type="date" required defaultValue={dateInput(goal?.targetDate ?? nextYear)} className="input" />
           </label>
           <label className="col-span-2 space-y-1">

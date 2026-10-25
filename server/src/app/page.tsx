@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { ACTIVE, getGoalStatus, type GoalStatus } from "@/lib/goal";
-import { byCategory, expensesBetween } from "@/lib/analytics";
+import { byCategory, detectRecurring, expensesBetween } from "@/lib/analytics";
+import { normalizeMerchant } from "@/lib/parser";
+import { WEDDING_CATEGORY } from "@/lib/categories";
+import { dueLabel, weddingOverview } from "@/lib/wedding";
 import { kstMonthStart, kstParts, manwon, monthKey, DAY } from "@/lib/time";
 import { CategoryBreakdown, DailyBars } from "@/components/Charts";
 import { TxRow } from "@/components/TxRow";
@@ -10,14 +13,15 @@ export const dynamic = "force-dynamic";
 
 type Cell = { key: string; label: number; year: number; net: number | null; current: boolean };
 
-/** 시작월~목표월까지 월별 순저축. 미래 달은 net = null */
+/** 시작월~목표월까지 월별로 목표 쪽으로 간 돈(수입 − 생활비). 미래 달은 net = null */
 async function monthTrack(status: NonNullable<GoalStatus>, now: Date): Promise<Cell[]> {
   const txs = await prisma.transaction.findMany({
     where: { ...ACTIVE, occurredAt: { gte: kstMonthStart(status.goal.startDate) } },
-    select: { type: true, amount: true, occurredAt: true },
+    select: { type: true, amount: true, occurredAt: true, category: true },
   });
   const net = new Map<string, number>();
   for (const t of txs) {
+    if (t.type === "EXPENSE" && t.category === WEDDING_CATEGORY) continue;
     const k = monthKey(t.occurredAt);
     net.set(k, (net.get(k) ?? 0) + (t.type === "INCOME" ? t.amount : -t.amount));
   }
@@ -49,27 +53,49 @@ function paceMessage(s: NonNullable<GoalStatus>) {
 export default async function Home() {
   const now = new Date();
   const monthStart = kstMonthStart(now);
-  const [status, monthExpenses, recent, reviewCount, feedback, members] = await Promise.all([
+  const [status, living, history, recent, reviewCount, feedback, members, wedding] = await Promise.all([
     getGoalStatus(now),
-    expensesBetween(monthStart, kstMonthStart(now, 1)),
-    prisma.transaction.findMany({ orderBy: { occurredAt: "desc" }, take: 6, include: { member: true } }),
+    expensesBetween(monthStart, kstMonthStart(now, 1), { living: true }),
+    expensesBetween(kstMonthStart(now, -4), monthStart, { living: true }),
+    prisma.transaction.findMany({ orderBy: { occurredAt: "desc" }, take: 5, include: { member: true } }),
     prisma.transaction.count({ where: { status: "REVIEW" } }),
     prisma.feedback.findFirst({ orderBy: { weekStart: "desc" } }),
-    prisma.member.findMany({ include: { transactions: { where: { status: { not: "IGNORED" }, cancelled: false, occurredAt: { gte: monthStart } } } } }),
+    prisma.member.findMany({ include: { transactions: { where: { ...ACTIVE, occurredAt: { gte: monthStart } } } } }),
+    weddingOverview(now),
   ]);
   const track = status ? await monthTrack(status, now) : [];
 
   const { year, month, date } = kstParts(now);
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const daily = Array.from({ length: daysInMonth }, (_, i) => ({ day: `${i + 1}`, amount: 0 }));
-  for (const t of monthExpenses) daily[kstParts(t.occurredAt).date - 1].amount += t.amount;
+  const daysLeftInMonth = daysInMonth - date + 1;
+  // 고정비(월세·통신·구독)는 날짜 되면 어차피 나가는 돈 → 먼저 떼어두고, 하루 단위는 변동 생활비만 봄
+  const fixed = detectRecurring([...history, ...living]);
+  const fixedKeys = new Set(fixed.map((f) => normalizeMerchant(f.merchant)));
+  const isFixed = (m: string) => fixedKeys.has(normalizeMerchant(m));
+  const fixedTotal = fixed.reduce((s, f) => s + f.amount, 0);
+  const fixedPaid = living.filter((t) => isFixed(t.merchant)).reduce((s, t) => s + t.amount, 0);
+  const fixedComing = Math.max(0, fixedTotal - fixedPaid);
+  const variable = living.filter((t) => !isFixed(t.merchant));
 
-  // 이번 달 목표 저축을 맞추려면 하루에 쓸 수 있는 돈
-  const budgetPerDay = status ? Math.max(0, (status.monthIncome - status.requiredPerMonth) / daysInMonth) : 0;
-  const monthSpent = monthExpenses.reduce((s, t) => s + t.amount, 0);
-  const overDays = budgetPerDay ? daily.slice(0, date).filter((d) => d.amount > budgetPerDay).length : 0;
+  const daily = Array.from({ length: daysInMonth }, (_, i) => ({ day: `${i + 1}`, amount: 0 }));
+  for (const t of variable) daily[kstParts(t.occurredAt).date - 1].amount += t.amount;
+  const livingSpent = living.reduce((s, t) => s + t.amount, 0);
+  const variableSpent = variable.reduce((s, t) => s + t.amount, 0);
+  const spentToday = daily[date - 1].amount;
+
+  // 이번 달 생활비 한도 = 예상 수입 − 목표 저축. 거기서 고정비 떼고 남은 날짜로 나누면 '오늘 쓸 수 있는 돈'
+  const livingBudget = status ? Math.max(0, status.expectedIncome - status.requiredPerMonth) : 0;
+  const variableBudget = Math.max(0, livingBudget - fixedTotal);
+  const variableLeft = variableBudget - variableSpent; // 오늘 쓴 것까지 포함
+  const perDay = (variableLeft + spentToday) / daysLeftInMonth; // 오늘 아침 기준 하루 몫
+  const todayLeft = perDay - spentToday;
+  const tomorrowPerDay = daysLeftInMonth > 1 ? Math.max(0, variableLeft) / (daysLeftInMonth - 1) : 0;
+  const avgPerDay = variableBudget / daysInMonth;
+  const overDays = avgPerDay ? daily.slice(0, date).filter((d) => d.amount > avgPerDay).length : 0;
+
   const baseline = status ? (status.goal.targetAmount - status.goal.startAmount) / Math.max(1, track.length) : 1;
   const pace = status ? paceMessage(status) : null;
+  const upcoming = wedding.upcoming.filter((i) => i.daysUntil <= 90).slice(0, 3);
 
   return (
     <main className="space-y-7">
@@ -90,13 +116,18 @@ export default async function Home() {
             <p className="num text-[15px] font-bold">D-{status.daysLeft}</p>
           </div>
           <p className="num mt-3 text-[40px] leading-none font-extrabold">
-            {manwon(status.current)}
+            {manwon(status.progressAmount)}
             <span className="ml-0.5 text-[24px] font-bold">원</span>
           </p>
           <p className="mt-2 text-[14px] text-cover-sub">
             <span className="num">{manwon(status.goal.targetAmount)}원</span> 중{" "}
             <b className="num text-cover-ink">{Math.floor(status.progress * 100)}%</b> 모음
           </p>
+          {status.weddingSpent > 0 && (
+            <p className="num mt-1 text-[12px] text-cover-sub">
+              통장 {manwon(status.balance)}원 + 결혼준비에 이미 쓴 {manwon(status.weddingSpent)}원
+            </p>
+          )}
 
           <div className="mt-6">
             <div className="mb-2 flex items-baseline justify-between text-[12px] text-cover-sub">
@@ -110,10 +141,10 @@ export default async function Home() {
                 return (
                   <div
                     key={c.key}
-                    title={c.net == null ? `${c.year}.${c.label}` : `${c.year}.${c.label} 순저축 ${manwon(c.net)}원`}
-                    className={`relative h-full flex-1 overflow-hidden rounded-[4px] ${
-                      c.current ? "ring-1 ring-cover-ink ring-offset-0" : ""
-                    } ${neg ? "bg-spend/70" : "bg-cover-line"}`}
+                    title={c.net == null ? `${c.year}.${c.label}` : `${c.year}.${c.label} 저축 ${manwon(c.net)}원`}
+                    className={`relative h-full flex-1 overflow-hidden rounded-[4px] ${c.current ? "ring-1 ring-cover-ink" : ""} ${
+                      neg ? "bg-spend/70" : "bg-cover-line"
+                    }`}
                   >
                     {!neg && <span className="absolute inset-x-0 bottom-0 bg-save" style={{ height: `${ratio * 100}%` }} />}
                   </div>
@@ -121,8 +152,12 @@ export default async function Home() {
               })}
             </div>
             <div className="num mt-1.5 flex justify-between text-[11px] text-cover-sub">
-              <span>{track[0]?.year}.{track[0]?.label}</span>
-              <span>{track.at(-1)?.year}.{track.at(-1)?.label}</span>
+              <span>
+                {track[0]?.year}.{track[0]?.label}
+              </span>
+              <span>
+                {track.at(-1)?.year}.{track.at(-1)?.label}
+              </span>
             </div>
           </div>
 
@@ -140,6 +175,85 @@ export default async function Home() {
         </Link>
       )}
 
+      {status && (
+        <section className="card">
+          {variableLeft <= 0 ? (
+            <>
+              <p className="text-[14px] text-sub">이번 달 생활비</p>
+              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-variableLeft)}원 넘음</p>
+              <p className="mt-1.5 text-[13px] leading-snug text-sub">
+                목표 저축 <span className="num">{manwon(status.requiredPerMonth)}원</span>을 지키려면 남은 {daysLeftInMonth}일은 꼭 필요한 데만 쓰자
+              </p>
+            </>
+          ) : todayLeft > 0 ? (
+            <>
+              <p className="text-[14px] text-sub">오늘 더 쓸 수 있는 돈</p>
+              <p className="num mt-1 text-[30px] leading-tight font-extrabold">
+                {manwon(todayLeft)}
+                <span className="text-[18px] font-bold">원</span>
+              </p>
+              <p className="mt-1.5 text-[13px] leading-snug text-sub">
+                오늘 몫 <span className="num">{manwon(perDay)}원</span>
+                {spentToday > 0 ? (
+                  <>
+                    {" "}중 <span className="num">{manwon(spentToday)}원</span> 씀
+                  </>
+                ) : null}
+                . 이번 달 남은 {daysLeftInMonth}일 동안 <span className="num">{manwon(variableLeft)}원</span>
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[14px] text-sub">
+                오늘 몫 <span className="num">{manwon(perDay)}원</span> 중 <span className="num">{manwon(spentToday)}원</span> 씀
+              </p>
+              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-todayLeft)}원 넘음</p>
+              <p className="mt-1.5 text-[13px] leading-snug text-sub">
+                {daysLeftInMonth > 1 ? (
+                  <>
+                    내일부터는 하루 <b className="num text-ink">{manwon(tomorrowPerDay)}원</b>씩 쓰면 이번 달 목표 지킬 수 있어
+                  </>
+                ) : (
+                  "오늘이 이번 달 마지막 날"
+                )}
+              </p>
+            </>
+          )}
+          {fixedTotal > 0 && (
+            <p className="mt-3 border-t border-line pt-3 text-[12px] text-sub">
+              월세·구독 같은 고정비 <span className="num">{manwon(fixedTotal)}원</span>은 따로 뺐어
+              {fixedComing > 0 && (
+                <>
+                  , 이번 달 <span className="num">{manwon(fixedComing)}원</span> 더 나갈 예정
+                </>
+              )}
+            </p>
+          )}
+        </section>
+      )}
+
+      {upcoming.length > 0 && (
+        <section>
+          <h2 className="section-title">
+            다가오는 결혼 준비 결제
+            <Link href="/wedding" className="text-[13px] font-semibold text-save">
+              예산표
+            </Link>
+          </h2>
+          <ul className="card ledger !py-1">
+            {upcoming.map((i) => (
+              <li key={i.id} className="flex items-center gap-3 py-3">
+                <span className={`num w-14 shrink-0 text-[13px] font-bold ${i.daysUntil < 0 ? "text-spend" : "text-sub"}`}>
+                  {dueLabel(i.daysUntil)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{i.name}</span>
+                <span className="num shrink-0 text-[15px] font-bold">{manwon(i.due)}원</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <h2 className="section-title">
           {month + 1}월 통장
@@ -148,11 +262,12 @@ export default async function Home() {
         <div className="card !py-1">
           <div className="ledger">
             <Row label="들어온 돈" value={`+${manwon(status?.monthIncome ?? 0)}원`} tone="save" />
-            <Row label="나간 돈" value={`−${manwon(monthSpent)}원`} />
+            <Row label="생활비" value={`−${manwon(livingSpent)}원`} />
+            {status && status.monthWedding > 0 && <Row label="결혼준비 결제" value={`−${manwon(status.monthWedding)}원`} muted />}
             {status && (
               <div className="py-3.5">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[15px] font-semibold">남은 돈</span>
+                  <span className="text-[15px] font-semibold">모은 돈</span>
                   <span className={`num text-[17px] font-bold ${status.monthNet >= status.requiredPerMonth ? "text-save" : "text-spend"}`}>
                     {manwon(status.monthNet)}원
                   </span>
@@ -168,6 +283,7 @@ export default async function Home() {
                   {status.monthNet >= status.requiredPerMonth
                     ? " 채움"
                     : `까지 ${manwon(status.requiredPerMonth - status.monthNet)}원 남음`}
+                  {status.monthIncome < status.expectedIncome && ", 월급 들어오기 전"}
                 </p>
               </div>
             )}
@@ -177,17 +293,19 @@ export default async function Home() {
 
       <section>
         <h2 className="section-title">
-          하루 지출
-          {budgetPerDay > 0 && <small>점선 = 하루 {manwon(budgetPerDay)}원</small>}
+          하루 생활비
+          {avgPerDay > 0 && <small>고정비 제외, 점선 = 하루 {manwon(avgPerDay)}원</small>}
         </h2>
         <div className="card">
-          <DailyBars data={daily} budgetPerDay={budgetPerDay || undefined} today={date} />
-          {budgetPerDay > 0 && (
+          <DailyBars data={daily} budgetPerDay={avgPerDay || undefined} today={date} />
+          {avgPerDay > 0 && (
             <p className="mt-2 text-[13px] text-sub">
               {overDays ? (
-                <>이번 달 <b className="text-spend">{overDays}일</b>은 하루 권장액을 넘김</>
+                <>
+                  이번 달 <b className="text-spend">{overDays}일</b>은 하루 몫을 넘김
+                </>
               ) : (
-                "아직 하루 권장액 넘긴 날 없음"
+                "아직 하루 몫 넘긴 날 없음"
               )}
             </p>
           )}
@@ -195,9 +313,12 @@ export default async function Home() {
       </section>
 
       <section>
-        <h2 className="section-title">어디에 썼나</h2>
+        <h2 className="section-title">
+          생활비 어디에 썼나
+          <small className="num">{manwon(livingSpent)}원</small>
+        </h2>
         <div className="card">
-          <CategoryBreakdown data={byCategory(monthExpenses)} />
+          <CategoryBreakdown data={byCategory(living)} limit={6} />
         </div>
       </section>
 
@@ -240,7 +361,11 @@ export default async function Home() {
         </h2>
         <div className="card !py-1">
           {recent.length ? (
-            <div className="ledger">{recent.map((t) => <TxRow key={t.id} t={t} />)}</div>
+            <div className="ledger">
+              {recent.map((t) => (
+                <TxRow key={t.id} t={t} />
+              ))}
+            </div>
           ) : (
             <p className="py-8 text-center text-sm text-sub">폰 앱을 연결하면 결제 알림이 여기 쌓여</p>
           )}
@@ -250,11 +375,11 @@ export default async function Home() {
   );
 }
 
-function Row({ label, value, tone }: { label: string; value: string; tone?: "save" }) {
+function Row({ label, value, tone, muted }: { label: string; value: string; tone?: "save"; muted?: boolean }) {
   return (
     <div className="flex items-baseline justify-between py-3.5">
       <span className="text-[15px] text-sub">{label}</span>
-      <span className={`num text-[17px] font-bold ${tone === "save" ? "text-save" : ""}`}>{value}</span>
+      <span className={`num text-[17px] font-bold ${tone === "save" ? "text-save" : ""} ${muted ? "text-sub" : ""}`}>{value}</span>
     </div>
   );
 }

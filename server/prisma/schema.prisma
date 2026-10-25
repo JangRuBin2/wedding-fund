@@ -85,3 +85,18 @@ model Feedback {
   model     String
   createdAt DateTime @default(now())
 }
+
+/// 결혼 예산표 항목 (예식장, 스드메, 신혼여행 …). 낸 돈은 직접 기록
+model WeddingItem {
+  id        String    @id @default(cuid())
+  name      String
+  /// 예식 | 스드메 | 예물·예단 | 신혼여행 | 신혼집·혼수 | 기타
+  group     String    @default("기타")
+  budget    Int       @default(0)
+  paid      Int       @default(0)
+  /// 남은 돈(잔금) 낼 날짜
+  dueDate   DateTime?
+  memo      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}

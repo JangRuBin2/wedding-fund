@@ -19,7 +19,7 @@ export function TxRow({ t, timeOnly }: { t: Tx; timeOnly?: boolean }) {
   const color = income ? "var(--color-save)" : colorOf(t.category);
   const meta = [t.category, t.issuer, t.member?.name].filter(Boolean).join(", ");
   return (
-    <div className={`flex items-center gap-3 py-3 ${t.cancelled || t.status === "IGNORED" ? "opacity-40" : ""}`}>
+    <div className={`flex items-center gap-3 py-3 ${t.cancelled || t.status === "IGNORED" ? "opacity-50" : ""}`}>
       <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-[12px] font-bold">
         <span className="absolute inset-0 opacity-15" style={{ background: color }} />
         <span className="relative" style={{ color }}>
@@ -33,6 +33,11 @@ export function TxRow({ t, timeOnly }: { t: Tx; timeOnly?: boolean }) {
             <span className="shrink-0 rounded-md bg-spend-soft px-1.5 py-0.5 text-[10px] font-bold text-spend">확인</span>
           )}
           {t.cancelled && <span className="shrink-0 text-[11px] font-medium text-sub no-underline">취소됨</span>}
+          {!t.cancelled && t.status === "IGNORED" && (
+            <span className="shrink-0 rounded-md bg-paper px-1.5 py-0.5 text-[10px] font-semibold text-sub">
+              {t.category === "저축" ? "저축 이동" : "집계 제외"}
+            </span>
+          )}
         </p>
         <p className="truncate text-[12px] text-sub">
           <span className="num">{timeOnly ? fmtKst(t.occurredAt).split(" ")[1] : fmtKst(t.occurredAt)}</span>

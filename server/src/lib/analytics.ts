@@ -1,11 +1,18 @@
 import { prisma } from "./db";
 import { ACTIVE } from "./goal";
+import { WEDDING_CATEGORY } from "./categories";
 import { kstParts, kstMonthStart, monthKey, DAY } from "./time";
 import { normalizeMerchant } from "./parser";
 
-export async function expensesBetween(from: Date, to: Date) {
+/** living=true면 결혼준비 결제(계약금·잔금 같은 목돈)를 빼고 생활비만 */
+export async function expensesBetween(from: Date, to: Date, opts: { living?: boolean } = {}) {
   return prisma.transaction.findMany({
-    where: { ...ACTIVE, type: "EXPENSE", occurredAt: { gte: from, lt: to } },
+    where: {
+      ...ACTIVE,
+      type: "EXPENSE",
+      ...(opts.living ? { category: { not: WEDDING_CATEGORY } } : {}),
+      occurredAt: { gte: from, lt: to },
+    },
     orderBy: { occurredAt: "asc" },
   });
 }
@@ -103,7 +110,7 @@ export function detectRecurring(txs: Tx[]) {
 export async function categoryTrend(now = new Date()) {
   const thisStart = kstMonthStart(now);
   const prevStart = kstMonthStart(now, -3);
-  const txs = await expensesBetween(prevStart, new Date(now.getTime() + DAY));
+  const txs = await expensesBetween(prevStart, new Date(now.getTime() + DAY), { living: true });
   const cur = byCategory(txs.filter((t) => t.occurredAt >= thisStart));
   const prev = byCategory(txs.filter((t) => t.occurredAt < thisStart));
   // 이번 달은 진행 중이므로 같은 일수 기준으로 비교

@@ -18,10 +18,17 @@ export const EXPENSE_CATEGORIES = [
   "생활",
   "결혼준비",
   "경조사",
+  "저축",
   "기타",
 ] as const;
 
-export const INCOME_CATEGORIES = ["급여", "부수입", "이체", "환불", "기타수입"] as const;
+export const INCOME_CATEGORIES = ["급여", "부수입", "이체", "환불", "저축", "기타수입"] as const;
+
+/** 결혼 자체에 쓰는 돈. 생활비(하루 권장액·패턴·넛지)에서 빼고, 목표 진행에는 '이미 쓴 결혼자금'으로 더함 */
+export const WEDDING_CATEGORY = "결혼준비";
+/** 내 계좌 사이 이동(적금 납입, 청약, 증권 이체). 소비도 수입도 아니라 자동으로 집계 제외 */
+export const SAVINGS_CATEGORY = "저축";
+const SAVINGS_RE = /적금|정기예금|청약|저축|CMA|ISA|파킹|증권|연금저축|IRP|내\s?계좌|본인\s?계좌/i;
 
 const RULES: [RegExp, string][] = [
   [/웨딩|스드메|예식|드레스|스튜디오|예물|청첩장|반지|본식|신혼여행|허니문/i, "결혼준비"],
@@ -42,6 +49,8 @@ const RULES: [RegExp, string][] = [
 ];
 
 export function categorizeByRules(merchant: string, type: "EXPENSE" | "INCOME", rawText = ""): string {
+  // 가맹점(받는/보낸 쪽)만 봄. 본문엔 '보통예금' 같은 계좌명이 흔해서 오탐남
+  if (SAVINGS_RE.test(merchant)) return SAVINGS_CATEGORY;
   if (type === "INCOME") {
     if (/급여|월급|상여|성과급/.test(rawText + merchant)) return "급여";
     if (/환불|취소|환급/.test(rawText + merchant)) return "환불";
@@ -58,14 +67,15 @@ export async function categorize(merchant: string, type: "EXPENSE" | "INCOME", r
 
   const byRule = categorizeByRules(merchant, type, rawText);
   if (byRule !== "기타" || type === "INCOME" || merchant === "알 수 없음") return byRule;
+  const llmChoices = EXPENSE_CATEGORIES.filter((c) => c !== SAVINGS_CATEGORY);
 
   const llm = await askLLM({
     system:
       "너는 한국 카드 결제 가맹점명을 가계부 카테고리로 분류한다. 반드시 주어진 목록 중 하나의 단어만 출력한다.",
-    user: `카테고리 목록: ${EXPENSE_CATEGORIES.join(", ")}\n가맹점명: ${merchant}\n정답 카테고리:`,
+    user: `카테고리 목록: ${llmChoices.join(", ")}\n가맹점명: ${merchant}\n정답 카테고리:`,
     maxTokens: 10,
   });
-  const picked = EXPENSE_CATEGORIES.find((c) => llm?.trim().startsWith(c));
+  const picked = llmChoices.find((c) => llm?.trim().startsWith(c));
   if (picked && picked !== "기타") {
     await prisma.merchantRule
       .create({ data: { merchant: normalizeMerchant(merchant), category: picked, source: "LLM" } })
@@ -74,3 +84,7 @@ export async function categorize(merchant: string, type: "EXPENSE" | "INCOME", r
   }
   return "기타";
 }
+
+/** 저축 이동은 자동으로 집계 제외 */
+export const statusForCategory = (category: string, fallback: string) =>
+  category === SAVINGS_CATEGORY ? "IGNORED" : fallback;

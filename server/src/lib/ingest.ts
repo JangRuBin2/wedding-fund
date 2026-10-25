@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { prisma } from "./db";
 import { parseNotification, normalizeMerchant } from "./parser";
-import { categorize } from "./categories";
+import { categorize, statusForCategory, SAVINGS_CATEGORY, WEDDING_CATEGORY } from "./categories";
 import { buildNudge } from "./goal";
 import { DAY } from "./time";
 
@@ -89,13 +89,14 @@ export async function ingestNotification(input: IngestInput): Promise<IngestResu
   if (dup) {
     // 기존 건이 애매했고 이번 게 더 확실하면 가맹점 정보 보강
     if (dup.status === "REVIEW" && parsed.confidence === "HIGH") {
+      const category = await categorize(parsed.merchant, parsed.type, input.text);
       await prisma.transaction.update({
         where: { id: dup.id },
         data: {
           merchant: parsed.merchant,
           issuer: parsed.issuer ?? dup.issuer,
-          status: "CONFIRMED",
-          category: await categorize(parsed.merchant, parsed.type, input.text),
+          status: statusForCategory(category, "CONFIRMED"),
+          category,
         },
       });
     }
@@ -113,12 +114,16 @@ export async function ingestNotification(input: IngestInput): Promise<IngestResu
       issuer: parsed.issuer,
       occurredAt: postedAt,
       source: "NOTIFICATION",
-      status: parsed.confidence === "HIGH" ? "CONFIRMED" : "REVIEW",
+      status: statusForCategory(category, parsed.confidence === "HIGH" ? "CONFIRMED" : "REVIEW"),
       memberId: member?.id,
     },
   });
   await prisma.rawNotification.update({ where: { id: raw.id }, data: { result: "PARSED", transactionId: tx.id } });
 
-  const nudge = tx.type === "EXPENSE" ? await buildNudge(tx.amount, tx.merchant) : null;
+  // 결혼준비 결제(계약금·잔금)나 적금 이체로 잔소리하지 않음
+  const nudge =
+    tx.type === "EXPENSE" && tx.category !== WEDDING_CATEGORY && tx.category !== SAVINGS_CATEGORY
+      ? await buildNudge(tx.amount, tx.merchant)
+      : null;
   return { result: "PARSED", transactionId: tx.id, status: tx.status, nudge };
 }

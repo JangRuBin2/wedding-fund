@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { normalizeMerchant } from "@/lib/parser";
 import { generateWeeklyFeedback } from "@/lib/feedback";
-import { categorizeByRules } from "@/lib/categories";
+import { WEDDING_GROUPS, WEDDING_TEMPLATE, weddingOverview } from "@/lib/wedding";
+import { categorizeByRules, SAVINGS_CATEGORY, statusForCategory } from "@/lib/categories";
 
 function refresh() {
-  for (const p of ["/", "/transactions", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
+  for (const p of ["/", "/transactions", "/wedding", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
 }
 
 /** 카테고리/가맹점/상태 수정. learn=on이면 같은 가맹점 과거·미래 건 모두 이 카테고리로 */
@@ -18,9 +19,10 @@ export async function updateTransaction(form: FormData) {
   const status = form.get("status") ? String(form.get("status")) : undefined;
   const learn = form.get("learn") === "on";
 
+  const nextStatus = status ?? (category || merchant ? "CONFIRMED" : undefined);
   const tx = await prisma.transaction.update({
     where: { id },
-    data: { category, merchant, status: status ?? (category || merchant ? "CONFIRMED" : undefined) },
+    data: { category, merchant, status: category && nextStatus ? statusForCategory(category, nextStatus) : nextStatus },
   });
 
   if (learn && category) {
@@ -32,7 +34,10 @@ export async function updateTransaction(form: FormData) {
     });
     const same = await prisma.transaction.findMany({ where: { type: tx.type }, select: { id: true, merchant: true } });
     const ids = same.filter((t) => normalizeMerchant(t.merchant) === key).map((t) => t.id);
-    await prisma.transaction.updateMany({ where: { id: { in: ids } }, data: { category } });
+    await prisma.transaction.updateMany({
+      where: { id: { in: ids } },
+      data: category === SAVINGS_CATEGORY ? { category, status: "IGNORED" } : { category },
+    });
   }
   refresh();
 }
@@ -58,7 +63,16 @@ export async function addManual(form: FormData) {
   const occurredAt = date ? new Date(`${date}T12:00:00+09:00`) : new Date();
   const category = String(form.get("category") || "") || categorizeByRules(merchant, type);
   await prisma.transaction.create({
-    data: { type, amount, merchant, category, occurredAt, source: "MANUAL", memo: String(form.get("memo") || "") || null },
+    data: {
+      type,
+      amount,
+      merchant,
+      category,
+      occurredAt,
+      source: "MANUAL",
+      status: statusForCategory(category, "CONFIRMED"),
+      memo: String(form.get("memo") || "") || null,
+    },
   });
   refresh();
 }
@@ -86,5 +100,68 @@ export async function generateFeedbackNow() {
 
 export async function deleteRule(id: string) {
   await prisma.merchantRule.delete({ where: { id } });
+  refresh();
+}
+
+// ── 결혼 예산표 ──────────────────────────────────────────
+
+const won = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? "").replace(/[^\d]/g, "")) || 0);
+const dateOrNull = (v: FormDataEntryValue | null) => (v ? new Date(`${v}T09:00:00+09:00`) : null);
+const groupOf = (v: FormDataEntryValue | null) =>
+  (WEDDING_GROUPS as readonly string[]).includes(String(v)) ? String(v) : "기타";
+
+export async function addWeddingItem(form: FormData) {
+  const name = String(form.get("name") || "").trim();
+  if (!name) return;
+  await prisma.weddingItem.create({
+    data: {
+      name,
+      group: groupOf(form.get("group")),
+      budget: won(form.get("budget")),
+      paid: won(form.get("paid")),
+      dueDate: dateOrNull(form.get("dueDate")),
+    },
+  });
+  refresh();
+}
+
+export async function updateWeddingItem(form: FormData) {
+  const id = String(form.get("id"));
+  await prisma.weddingItem.update({
+    where: { id },
+    data: {
+      name: String(form.get("name") || "").trim() || undefined,
+      group: groupOf(form.get("group")),
+      budget: won(form.get("budget")),
+      paid: won(form.get("paid")),
+      dueDate: dateOrNull(form.get("dueDate")),
+      memo: String(form.get("memo") || "").trim() || null,
+    },
+  });
+  refresh();
+}
+
+/** 남은 돈 전부 냄 */
+export async function settleWeddingItem(id: string) {
+  const item = await prisma.weddingItem.findUnique({ where: { id } });
+  if (item) await prisma.weddingItem.update({ where: { id }, data: { paid: Math.max(item.paid, item.budget) } });
+  refresh();
+}
+
+export async function deleteWeddingItem(id: string) {
+  await prisma.weddingItem.delete({ where: { id } });
+  refresh();
+}
+
+export async function addWeddingTemplate() {
+  if ((await prisma.weddingItem.count()) > 0) return;
+  await prisma.weddingItem.createMany({ data: WEDDING_TEMPLATE.map((t) => ({ ...t })) });
+  refresh();
+}
+
+/** 목표 금액을 예산표 합계로 맞춤 */
+export async function alignGoalToBudget() {
+  const { budget } = await weddingOverview();
+  if (budget > 0) await prisma.goal.update({ where: { id: 1 }, data: { targetAmount: budget } }).catch(() => {});
   refresh();
 }

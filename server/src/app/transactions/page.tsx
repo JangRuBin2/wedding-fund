@@ -147,7 +147,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                     </form>
                   </div>
                   <p className="text-[11px] text-sub">
-                    내 계좌끼리 이체나 적금 납입처럼 실제로 쓴 돈이 아니면 '집계 제외'
+                    적금·청약 이체는 카테고리를 '저축'으로 바꾸면 자동으로 집계 제외돼. 계약금·잔금은 '결혼준비'로
                   </p>
                 </div>
               </details>

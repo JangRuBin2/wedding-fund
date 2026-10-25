@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { byCategory, categoryTrend, detectRecurring, expensesBetween, heatmap, lateNight, topMerchants, weekdayVsWeekend } from "@/lib/analytics";
 import { colorOf } from "@/lib/colors";
 import { CategoryBreakdown } from "@/components/Charts";
@@ -11,8 +12,8 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
   const now = new Date();
   const from = new Date(now.getTime() - days * DAY);
   const [txs, longTxs, trend] = await Promise.all([
-    expensesBetween(from, now),
-    expensesBetween(kstMonthStart(now, -5), now),
+    expensesBetween(from, now, { living: true }),
+    expensesBetween(kstMonthStart(now, -5), now, { living: true }),
     categoryTrend(now),
   ]);
 
@@ -31,7 +32,7 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
   return (
     <main className="space-y-7">
       <header className="flex items-center justify-between">
-        <h1 className="text-[22px] font-bold">소비 패턴</h1>
+        <h1 className="text-[22px] font-bold">소비 분석</h1>
         <div className="flex rounded-[10px] bg-card p-1" role="tablist" aria-label="기간">
           {[30, 90, 180].map((d) => (
             <a
@@ -45,6 +46,14 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
           ))}
         </div>
       </header>
+
+      <Link href="/feedback" className="flex items-center justify-between rounded-2xl border-l-4 border-save bg-card px-4 py-3.5">
+        <span>
+          <span className="block text-[15px] font-semibold">주간 피드백</span>
+          <span className="block text-[12px] text-sub">지난주 소비를 AI가 짚어줌</span>
+        </span>
+        <span className="text-[13px] font-semibold text-save">보기</span>
+      </Link>
 
       <section>
         <h2 className="section-title">언제 쓰나<small>진할수록 많이 씀</small></h2>

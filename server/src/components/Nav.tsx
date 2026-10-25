@@ -6,7 +6,12 @@ const I = {
   home: <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z" />,
   list: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
   pattern: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
-  coach: <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />,
+  ring: (
+    <>
+      <circle cx="12" cy="14.5" r="6" />
+      <path d="M9.5 8.8 8 5.5h8l-1.5 3.3M8 5.5l4 3.3 4-3.3" />
+    </>
+  ),
   gear: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -18,8 +23,8 @@ const I = {
 const TABS = [
   { href: "/", label: "홈", icon: I.home },
   { href: "/transactions", label: "내역", icon: I.list },
-  { href: "/patterns", label: "패턴", icon: I.pattern },
-  { href: "/feedback", label: "피드백", icon: I.coach },
+  { href: "/wedding", label: "결혼준비", icon: I.ring },
+  { href: "/patterns", label: "분석", icon: I.pattern },
   { href: "/settings", label: "설정", icon: I.gear },
 ];
 
@@ -29,7 +34,8 @@ export function Nav() {
     <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-card/90 backdrop-blur-md md:sticky md:top-0 md:bottom-auto md:border-t-0 md:border-b">
       <ul className="mx-auto grid max-w-3xl grid-cols-5 pb-[env(safe-area-inset-bottom)] md:max-w-xl">
         {TABS.map((t) => {
-          const active = t.href === "/" ? path === "/" : path.startsWith(t.href);
+          const active =
+            t.href === "/" ? path === "/" : path.startsWith(t.href) || (t.href === "/patterns" && path.startsWith("/feedback"));
           return (
             <li key={t.href}>
               <Link
