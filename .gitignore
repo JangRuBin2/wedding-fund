@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+*.db
+*.db-journal
+src/generated
+*.tsbuildinfo
+next-env.d.ts
+.expo
+android
+ios
+*.apk

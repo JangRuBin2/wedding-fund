@@ -1,0 +1,87 @@
+// Prisma 7 (Rust 엔진 없는 클라이언트 + driver adapter). DB 주소는 prisma.config.ts에서 읽음.
+// 개인용이라 기본은 SQLite. Postgres로 바꾸려면 provider + src/lib/db.ts 어댑터만 교체.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// 결제 알림을 보내는 사람 (커플 공유 모드: 기기마다 이름을 다르게 설정)
+model Member {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}
+
+/// 폰에서 넘어온 알림 원문. 파서를 고치면 재처리할 수 있게 전부 보관
+model RawNotification {
+  id            String       @id @default(cuid())
+  packageName   String
+  title         String
+  text          String
+  postedAt      DateTime
+  hash          String       @unique
+  result        String // PARSED | DUPLICATE | SKIPPED | CANCEL_MATCHED
+  memberName    String?
+  createdAt     DateTime     @default(now())
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  transactionId String?
+}
+
+model Transaction {
+  id         String            @id @default(cuid())
+  type       String // EXPENSE | INCOME
+  amount     Int
+  merchant   String
+  category   String
+  occurredAt DateTime
+  source     String // NOTIFICATION | MANUAL
+  issuer     String?
+  memo       String?
+  /// CONFIRMED: 확정, REVIEW: 파싱이 애매해서 확인 필요, IGNORED: 무시(가계부 집계 제외)
+  status     String            @default("CONFIRMED")
+  cancelled  Boolean           @default(false)
+  member     Member?           @relation(fields: [memberId], references: [id])
+  memberId   String?
+  raws       RawNotification[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([occurredAt])
+  @@index([merchant])
+}
+
+/// 가맹점 → 카테고리 학습 규칙 (사용자가 수정하거나 LLM이 분류한 결과)
+model MerchantRule {
+  id        String   @id @default(cuid())
+  merchant  String   @unique
+  category  String
+  source    String   @default("USER") // USER | LLM
+  createdAt DateTime @default(now())
+}
+
+/// 결혼자금 목표 (단일 레코드)
+model Goal {
+  id           Int      @id @default(1)
+  title        String   @default("결혼자금")
+  targetAmount Int
+  /// 추적 시작 시점에 이미 모아둔 금액
+  startAmount  Int      @default(0)
+  startDate    DateTime
+  targetDate   DateTime
+  /// 이 금액 이상 결제하면 충동구매 넛지
+  bigSpendThreshold Int @default(50000)
+  updatedAt    DateTime @updatedAt
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  weekStart DateTime @unique
+  content   String
+  model     String
+  createdAt DateTime @default(now())
+}

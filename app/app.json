@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "결혼자금",
+    "slug": "wedding-fund",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.ruru.weddingfund",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
+    }
+  }
+}
