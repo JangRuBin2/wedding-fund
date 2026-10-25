@@ -1,32 +1,43 @@
 "use client";
-import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { colorOf } from "@/lib/colors";
 
 const fmt = (v: number) => `${Math.round(v).toLocaleString("ko-KR")}원`;
 
-export function CategoryDonut({ data }: { data: { category: string; amount: number }[] }) {
+const tooltipProps = {
+  formatter: (v: number) => [fmt(v), "지출"] as [string, string],
+  labelFormatter: (l: string) => `${l}일`,
+  contentStyle: {
+    background: "var(--color-card)",
+    border: "1px solid var(--color-line)",
+    borderRadius: 10,
+    fontSize: 12,
+    padding: "6px 10px",
+  },
+  labelStyle: { color: "var(--color-sub)", marginBottom: 2 },
+  itemStyle: { color: "var(--color-ink)", fontWeight: 700, padding: 0 },
+};
+
+/** 한 줄 100% 막대 + 항목별 행. 도넛보다 금액 비교가 빠름 */
+export function CategoryBreakdown({ data, limit = 7 }: { data: { category: string; amount: number }[]; limit?: number }) {
   const total = data.reduce((s, d) => s + d.amount, 0);
-  if (!total) return <p className="py-10 text-center text-sm text-sub">아직 이번 달 지출이 없어</p>;
+  if (!total) return <p className="py-8 text-center text-sm text-sub">이번 달 지출이 아직 없어</p>;
+  const shown = data.slice(0, limit);
+  const rest = data.slice(limit).reduce((s, d) => s + d.amount, 0);
+  const rows = rest ? [...shown, { category: "그 외", amount: rest }] : shown;
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="h-44 w-44 shrink-0">
-        <ResponsiveContainer>
-          <PieChart>
-            <Pie data={data} dataKey="amount" nameKey="category" innerRadius={52} outerRadius={80} paddingAngle={2} stroke="none" isAnimationActive={false}>
-              {data.map((d) => (
-                <Cell key={d.category} fill={colorOf(d.category)} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(v: number) => fmt(v)} />
-          </PieChart>
-        </ResponsiveContainer>
+    <div>
+      <div className="flex h-3 gap-[2px] overflow-hidden rounded-full">
+        {data.map((d) => (
+          <span key={d.category} style={{ flex: d.amount, background: colorOf(d.category) }} title={d.category} />
+        ))}
       </div>
-      <ul className="w-full space-y-1.5">
-        {data.slice(0, 7).map((d) => (
-          <li key={d.category} className="flex items-center gap-2 text-sm">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: colorOf(d.category) }} />
-            <span className="flex-1">{d.category}</span>
-            <span className="num text-sub">{Math.round((d.amount / total) * 100)}%</span>
+      <ul className="ledger mt-3">
+        {rows.map((d) => (
+          <li key={d.category} className="flex items-center gap-2.5 py-2.5 text-[14px]">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colorOf(d.category) }} />
+            <span className="flex-1 font-medium">{d.category}</span>
+            <span className="num w-10 text-right text-[13px] text-sub">{Math.round((d.amount / total) * 100)}%</span>
             <span className="num w-24 text-right font-semibold">{fmt(d.amount)}</span>
           </li>
         ))}
@@ -35,19 +46,38 @@ export function CategoryDonut({ data }: { data: { category: string; amount: numb
   );
 }
 
-export function DailyBars({ data, budgetPerDay }: { data: { day: string; amount: number }[]; budgetPerDay?: number }) {
+export function DailyBars({
+  data,
+  budgetPerDay,
+  today,
+}: {
+  data: { day: string; amount: number }[];
+  budgetPerDay?: number;
+  today?: number;
+}) {
   return (
-    <div className="h-40">
+    <div className="h-36">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-          <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={10} interval={4} stroke="var(--color-sub)" />
-          <YAxis hide />
-          <Tooltip formatter={(v: number) => fmt(v)} cursor={{ fill: "var(--color-line)", opacity: 0.4 }} />
-          <Bar dataKey="amount" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+        <BarChart data={data} margin={{ top: 6, right: 0, left: 0, bottom: 0 }} barCategoryGap="22%">
+          <XAxis
+            dataKey="day"
+            tickLine={false}
+            axisLine={{ stroke: "var(--color-line)" }}
+            fontSize={10}
+            ticks={["1", "10", "20", String(data.length)]}
+            stroke="var(--color-faint)"
+          />
+          <YAxis hide domain={[0, (max: number) => Math.max(max, (budgetPerDay ?? 0) * 1.2)]} />
+          <Tooltip {...tooltipProps} cursor={{ fill: "var(--color-line)", opacity: 0.5 }} />
+          {budgetPerDay ? (
+            <ReferenceLine y={budgetPerDay} stroke="var(--color-sub)" strokeDasharray="3 3" strokeWidth={1} />
+          ) : null}
+          <Bar dataKey="amount" radius={[3, 3, 0, 0]} isAnimationActive={false}>
             {data.map((d, i) => (
               <Cell
                 key={i}
                 fill={budgetPerDay && d.amount > budgetPerDay ? "var(--color-spend)" : "var(--color-save)"}
+                fillOpacity={today && i + 1 > today ? 0.25 : i + 1 === today ? 1 : 0.8}
               />
             ))}
           </Bar>

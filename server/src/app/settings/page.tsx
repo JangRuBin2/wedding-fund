@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { fmtKst, toKst } from "@/lib/time";
 import { deleteRule, saveGoal } from "../actions";
+import { colorOf } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,12 @@ export default async function Settings() {
   const nextYear = new Date(now.getTime() + 365 * 86400_000);
 
   return (
-    <main className="space-y-4">
-      <h1 className="text-2xl font-bold">설정</h1>
+    <main className="space-y-7">
+      <h1 className="text-[22px] font-bold">설정</h1>
 
-      <section className="card">
-        <p className="mb-3 font-bold">목표</p>
-        <form action={saveGoal} className="grid grid-cols-2 gap-3">
+      <section>
+        <h2 className="section-title">목표</h2>
+        <form action={saveGoal} className="card grid grid-cols-2 gap-x-3 gap-y-4">
           <label className="col-span-2 space-y-1">
             <span className="label">이름</span>
             <input name="title" defaultValue={goal?.title ?? "결혼자금"} className="input" />
@@ -47,56 +48,70 @@ export default async function Settings() {
             <input name="targetDate" type="date" required defaultValue={dateInput(goal?.targetDate ?? nextYear)} className="input" />
           </label>
           <label className="col-span-2 space-y-1">
-            <span className="label">이 금액 이상 결제 시 폰으로 넛지 (원)</span>
+            <span className="label">이 금액 넘게 결제하면 폰으로 알림 (원)</span>
             <input name="bigSpendThreshold" inputMode="numeric" defaultValue={goal?.bigSpendThreshold ?? 50000} className="input num" />
           </label>
-          <p className="col-span-2 text-xs text-sub">
-            모은 돈 = 이미 모아둔 돈 + 시작일 이후 (수입 − 지출). 적금 납입이나 내 계좌 간 이체는 내역에서 '집계 제외' 처리
+          <p className="col-span-2 text-[12px] leading-relaxed text-sub">
+            모은 돈은 이미 모아둔 돈에 시작일 이후 수입에서 지출을 뺀 만큼 더한 값. 적금 납입이나 내 계좌 간 이체는 내역에서 집계 제외해줘
           </p>
-          <button className="btn col-span-2">저장</button>
+          <button className="btn col-span-2">목표 저장</button>
         </form>
       </section>
 
-      <section className="card space-y-2 text-sm">
-        <p className="font-bold">폰 앱 연결 정보</p>
-        <p>서버 주소: <code className="rounded bg-paper px-1.5 py-0.5">{origin}</code></p>
-        <p>토큰: 서버 <code className="rounded bg-paper px-1.5 py-0.5">.env</code>의 <code>INGEST_TOKEN</code> 값</p>
-        <p className="text-xs text-sub">
-          연결된 사람: {members.length ? members.map((m) => m.name).join(", ") : "아직 없음"} — 커플이 같이 쓰려면 각자 폰에 앱 깔고 이름만 다르게
-        </p>
+      <section>
+        <h2 className="section-title">폰 앱 연결</h2>
+        <div className="card !py-1 text-[14px]">
+          <dl className="ledger">
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-sub">서버 주소</dt>
+              <dd><code className="num rounded bg-paper px-1.5 py-0.5 text-[13px]">{origin}</code></dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-sub">토큰</dt>
+              <dd className="text-right">서버 .env의 <code className="rounded bg-paper px-1.5 py-0.5 text-[13px]">INGEST_TOKEN</code></dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-sub">연결된 사람</dt>
+              <dd className="font-semibold">{members.length ? members.map((m) => m.name).join(", ") : "아직 없음"}</dd>
+            </div>
+          </dl>
+        </div>
+        <p className="mt-2 px-1 text-[12px] text-sub">둘이 같이 쓰려면 각자 폰에 앱을 깔고 이름만 다르게 넣으면 돼</p>
       </section>
 
-      <section className="card">
-        <p className="mb-1 font-bold">최근 받은 알림 원문</p>
-        <p className="mb-3 text-xs text-sub">SKIPPED인데 결제 알림이면 파서가 못 잡은 거. 원문 복사해서 scripts/test-parser.ts에 케이스로 추가</p>
-        <ul className="space-y-2">
+      <section>
+        <h2 className="section-title">최근 받은 알림</h2>
+        <p className="mb-2 px-1 text-[12px] leading-relaxed text-sub">결제 알림인데 SKIPPED면 파서가 못 잡은 거. 원문을 scripts/test-parser.ts에 케이스로 추가하면 돼</p>
+        <ul className="card space-y-2 !p-2">
           {raws.map((r) => (
-            <li key={r.id} className="rounded-lg bg-paper p-2 text-xs">
-              <div className="mb-1 flex justify-between text-sub">
-                <span>{fmtKst(r.createdAt)} · {r.packageName}</span>
+            <li key={r.id} className="rounded-lg bg-paper p-2.5 text-xs">
+              <div className="mb-1 flex justify-between gap-2 text-sub">
+                <span className="truncate"><span className="num">{fmtKst(r.createdAt)}</span> {r.packageName}</span>
                 <b className={r.result === "SKIPPED" ? "text-warn" : r.result === "PARSED" ? "text-save" : ""}>{r.result}</b>
               </div>
               <p className="whitespace-pre-wrap">{r.title}{"\n"}{r.text}</p>
             </li>
           ))}
-          {raws.length === 0 && <li className="text-sm text-sub">아직 없음</li>}
+          {raws.length === 0 && <li className="py-6 text-center text-sm text-sub">폰 앱을 연결하면 받은 알림 원문이 여기 보여</li>}
         </ul>
       </section>
 
-      <section className="card">
-        <p className="mb-3 font-bold">학습된 가맹점 규칙</p>
-        <ul className="divide-y divide-line text-sm">
+      <section>
+        <h2 className="section-title">가맹점 분류 규칙<small>{rules.length}개</small></h2>
+        <ul className="card ledger !py-1 text-[14px]">
           {rules.map((r) => (
-            <li key={r.id} className="flex items-center justify-between py-2">
-              <span>
-                {r.merchant} → <b>{r.category}</b> <span className="text-xs text-sub">({r.source === "LLM" ? "AI" : "직접"})</span>
+            <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
+              <span className="min-w-0 truncate">
+                {r.merchant}
+                <b className="ml-2" style={{ color: colorOf(r.category) }}>{r.category}</b>
+                <span className="ml-1.5 text-[11px] text-faint">{r.source === "LLM" ? "AI 분류" : "직접 지정"}</span>
               </span>
               <form action={deleteRule.bind(null, r.id)}>
-                <button className="text-xs text-sub">삭제</button>
+                <button className="shrink-0 rounded-md px-2 py-1 text-[12px] text-sub hover:text-spend">삭제</button>
               </form>
             </li>
           ))}
-          {rules.length === 0 && <li className="py-2 text-sub">내역에서 카테고리 고치면 여기 쌓임</li>}
+          {rules.length === 0 && <li className="py-6 text-center text-sm text-sub">내역에서 카테고리를 고치면 여기 쌓여</li>}
         </ul>
       </section>
     </main>

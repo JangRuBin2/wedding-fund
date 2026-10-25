@@ -10,32 +10,37 @@ export default async function FeedbackPage() {
   const hasKey = !!process.env.ANTHROPIC_API_KEY;
 
   return (
-    <main className="space-y-4">
+    <main className="space-y-5">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">주간 피드백</h1>
+        <h1 className="text-[22px] font-bold">주간 피드백</h1>
         <form action={generateFeedbackNow}>
-          <SubmitButton pendingText="분석 중…">지난주 분석</SubmitButton>
+          <SubmitButton pendingText="분석 중…">지난주 분석하기</SubmitButton>
         </form>
       </header>
       {!hasKey && (
-        <p className="rounded-xl bg-spend-soft p-3 text-sm text-spend">
-          ANTHROPIC_API_KEY가 없어서 규칙 기반 요약으로 나옴. 키 넣으면 Claude가 패턴 보고 직접 잔소리해줌
+        <p className="rounded-xl bg-card p-3.5 text-[13px] leading-relaxed text-sub">
+          지금은 규칙 기반 요약만 나와. 서버 <code className="rounded bg-paper px-1">.env</code>에 <code className="rounded bg-paper px-1">ANTHROPIC_API_KEY</code>를 넣으면 Claude가 패턴을 보고 코멘트를 써줌
         </p>
       )}
-      {list.length === 0 && <p className="card text-center text-sm text-sub">아직 피드백 없음. 매주 월요일 아침 자동 생성되게 크론 걸어두면 됨</p>}
+      {list.length === 0 && (
+        <p className="card py-10 text-center text-sm leading-relaxed text-sub">
+          아직 피드백이 없어. 위 버튼으로 지금 만들거나,
+          <br />매주 월요일 아침 자동으로 만들어지게 크론을 걸어둬
+        </p>
+      )}
       {list.map((f) => {
         const s = kstParts(f.weekStart);
         const e = kstParts(new Date(f.weekStart.getTime() + 6 * DAY));
         const [head, ...rest] = f.content.split("\n").filter(Boolean);
         return (
           <article key={f.id} className="card">
-            <p className="label">
-              {s.month + 1}/{s.date} ~ {e.month + 1}/{e.date} · {f.model}
+            <p className="num text-[12px] font-semibold text-sub">
+              {s.month + 1}월 {s.date}일 ~ {e.month + 1}월 {e.date}일
             </p>
-            <p className="mt-1 text-lg font-bold leading-snug">{head}</p>
-            <div className="mt-2 space-y-1.5 text-[15px] leading-relaxed">
+            <p className="mt-1.5 text-[18px] leading-snug font-bold">{head}</p>
+            <div className="mt-3 space-y-2 text-[15px] leading-relaxed text-ink/85">
               {rest.map((line, i) => (
-                <p key={i} className={line.startsWith("다음 주") ? "mt-3 rounded-lg bg-save-soft px-3 py-2 font-semibold text-save" : ""}>
+                <p key={i} className={line.startsWith("다음 주") ? "!mt-4 border-l-[3px] border-save pl-3 font-semibold text-ink" : ""}>
                   {line}
                 </p>
               ))}

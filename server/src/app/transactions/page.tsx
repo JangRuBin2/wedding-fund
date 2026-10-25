@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
-import { kstMonthStart, kstParts, manwon } from "@/lib/time";
+import { kstMonthStart, kstParts, manwon, WEEKDAYS } from "@/lib/time";
 import { TxRow } from "@/components/TxRow";
 import { addManual, deleteTransaction, setStatus, updateTransaction } from "../actions";
 
@@ -39,71 +39,80 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
   const today = new Date(now.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
 
   return (
-    <main className="space-y-4">
+    <main className="space-y-5">
       <header className="flex items-center justify-between">
         {reviewMode ? (
-          <h1 className="text-2xl font-bold">확인 필요한 내역</h1>
+          <>
+            <h1 className="text-[22px] font-bold">확인할 결제</h1>
+            <Link href="/transactions" className="btn-ghost">전체 내역</Link>
+          </>
         ) : (
-          <div className="flex items-center gap-3">
-            <Link href={`/transactions?month=${ym(-1)}`} className="btn-ghost">←</Link>
-            <h1 className="text-xl font-bold">{year}년 {month + 1}월</h1>
-            <Link href={`/transactions?month=${ym(1)}`} className="btn-ghost">→</Link>
+          <div className="flex w-full items-center justify-between">
+            <Link href={`/transactions?month=${ym(-1)}`} aria-label="이전 달" className="btn-ghost !px-3">‹</Link>
+            <h1 className="num text-[20px] font-bold">{year}년 {month + 1}월</h1>
+            <Link href={`/transactions?month=${ym(1)}`} aria-label="다음 달" className="btn-ghost !px-3">›</Link>
           </div>
         )}
-        {reviewMode && <Link href="/transactions" className="btn-ghost">전체 보기</Link>}
       </header>
 
       {!reviewMode && (
-        <section className="grid grid-cols-3 gap-2 text-center">
-          <div className="card !p-3"><p className="label">수입</p><p className="num font-bold text-save">{manwon(income)}</p></div>
-          <div className="card !p-3"><p className="label">지출</p><p className="num font-bold text-spend">{manwon(expense)}</p></div>
-          <div className="card !p-3"><p className="label">순</p><p className="num font-bold">{manwon(income - expense)}</p></div>
+        <section className="card grid grid-cols-3 divide-x divide-line !px-0 !py-3.5 text-center">
+          <div><p className="label">들어온 돈</p><p className="num mt-0.5 text-[17px] font-bold text-save">+{manwon(income)}</p></div>
+          <div><p className="label">나간 돈</p><p className="num mt-0.5 text-[17px] font-bold">−{manwon(expense)}</p></div>
+          <div><p className="label">남은 돈</p><p className={`num mt-0.5 text-[17px] font-bold ${income - expense < 0 ? "text-spend" : ""}`}>{manwon(income - expense)}</p></div>
         </section>
       )}
 
-      <details className="card">
-        <summary className="cursor-pointer font-bold">+ 직접 입력 (현금, 월급 등)</summary>
-        <form action={addManual} className="mt-3 grid grid-cols-2 gap-2">
+      <form className="flex gap-2">
+        {sp.month && <input type="hidden" name="month" value={sp.month} />}
+        <input name="q" defaultValue={sp.q} placeholder="가맹점 검색" className="input !bg-card" />
+        <select name="type" defaultValue={sp.type ?? ""} className="input !w-24 !bg-card">
+          <option value="">전체</option>
+          <option value="EXPENSE">지출</option>
+          <option value="INCOME">수입</option>
+        </select>
+        <button className="btn shrink-0">검색</button>
+      </form>
+
+      <details className="card group">
+        <summary className="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+          <span>직접 입력</span>
+          <span className="text-[13px] font-medium text-sub group-open:hidden">현금, 월급처럼 알림 안 오는 것</span>
+        </summary>
+        <form action={addManual} className="mt-4 grid grid-cols-2 gap-2">
           <select name="type" className="input">
             <option value="EXPENSE">지출</option>
             <option value="INCOME">수입</option>
           </select>
           <input name="date" type="date" defaultValue={today} className="input" />
-          <input name="amount" inputMode="numeric" placeholder="금액" required className="input" />
-          <input name="merchant" placeholder="어디서 / 무엇" className="input" />
+          <input name="amount" inputMode="numeric" placeholder="금액" required className="input num" />
+          <input name="merchant" placeholder="어디서, 무엇을" className="input" />
           <select name="category" className="input col-span-2" defaultValue="">
-            <option value="">카테고리 자동</option>
+            <option value="">카테고리 자동 분류</option>
             <optgroup label="지출">{EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</optgroup>
             <optgroup label="수입">{INCOME_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</optgroup>
           </select>
           <input name="memo" placeholder="메모 (선택)" className="input col-span-2" />
-          <button className="btn col-span-2">추가</button>
+          <button className="btn col-span-2">내역에 추가</button>
         </form>
       </details>
 
-      <form className="flex gap-2">
-        {sp.month && <input type="hidden" name="month" value={sp.month} />}
-        <input name="q" defaultValue={sp.q} placeholder="가맹점 검색" className="input" />
-        <select name="type" defaultValue={sp.type ?? ""} className="input !w-28">
-          <option value="">전체</option>
-          <option value="EXPENSE">지출</option>
-          <option value="INCOME">수입</option>
-        </select>
-        <button className="btn">검색</button>
-      </form>
-
-      <section className="card !py-2">
-        {txs.length === 0 && <p className="py-8 text-center text-sm text-sub">내역 없음</p>}
-        <ul className="divide-y divide-line">
-          {txs.map((t) => (
+      <section className="card !py-1">
+        {txs.length === 0 && <p className="py-10 text-center text-sm text-sub">{reviewMode ? "확인할 결제 없음" : sp.q ? `"${sp.q}" 검색 결과 없음` : "이 달은 내역이 없어"}</p>}
+        <ul>
+          {txs.map((t, i) => {
+            const day = dayLabel(t.occurredAt);
+            const showDay = i === 0 || dayLabel(txs[i - 1].occurredAt) !== day;
+            return (
             <li key={t.id}>
+              {showDay && <p className="pt-4 pb-1 text-[12px] font-semibold text-sub">{day}</p>}
               <details>
                 <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                  <TxRow t={t} />
+                  <TxRow t={t} timeOnly={!reviewMode} />
                 </summary>
-                <div className="mb-3 space-y-2 rounded-xl bg-paper p-3">
+                <div className="mb-3 space-y-3 rounded-xl bg-paper p-3">
                   {t.raws[0] && (
-                    <p className="whitespace-pre-wrap rounded-lg bg-card p-2 text-xs text-sub">
+                    <p className="whitespace-pre-wrap rounded-lg border border-dashed border-line p-2.5 text-xs leading-relaxed text-sub">
                       {t.raws[0].title}
                       {"\n"}
                       {t.raws[0].text}
@@ -111,17 +120,17 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                   )}
                   <form action={updateTransaction} className="grid grid-cols-2 gap-2">
                     <input type="hidden" name="id" value={t.id} />
-                    <input name="merchant" defaultValue={t.merchant} className="input" />
-                    <select name="category" defaultValue={t.category} className="input">
+                    <input name="merchant" defaultValue={t.merchant} className="input !bg-card" />
+                    <select name="category" defaultValue={t.category} className="input !bg-card">
                       {(t.type === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((c) => (
                         <option key={c}>{c}</option>
                       ))}
                       {![...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES].includes(t.category as never) && <option>{t.category}</option>}
                     </select>
-                    <label className="col-span-2 flex items-center gap-2 text-sm">
-                      <input type="checkbox" name="learn" defaultChecked /> 이 가맹점은 앞으로도 이 카테고리로
+                    <label className="col-span-2 flex items-center gap-2 text-[13px] text-sub">
+                      <input type="checkbox" name="learn" defaultChecked /> 다음부터 이 가맹점은 이 카테고리로 분류
                     </label>
-                    <button className="btn col-span-2">저장 (확정)</button>
+                    <button className="btn col-span-2">저장</button>
                   </form>
                   <div className="flex gap-2">
                     {t.status !== "IGNORED" ? (
@@ -134,18 +143,24 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                       </form>
                     )}
                     <form action={deleteTransaction.bind(null, t.id)}>
-                      <button className="btn-ghost text-spend">삭제</button>
+                      <button className="btn-ghost !text-spend">삭제</button>
                     </form>
                   </div>
                   <p className="text-[11px] text-sub">
-                    내 계좌끼리 이체, 적금 납입처럼 실제 소비가 아닌 건 '집계 제외' 하면 됨
+                    내 계좌끼리 이체나 적금 납입처럼 실제로 쓴 돈이 아니면 '집계 제외'
                   </p>
                 </div>
               </details>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
     </main>
   );
+}
+
+function dayLabel(d: Date) {
+  const p = kstParts(d);
+  return `${p.month + 1}월 ${p.date}일 ${WEEKDAYS[p.weekday]}요일`;
 }

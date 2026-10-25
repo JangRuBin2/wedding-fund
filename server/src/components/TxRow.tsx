@@ -14,29 +14,33 @@ type Tx = {
   member?: { name: string } | null;
 };
 
-export function TxRow({ t }: { t: Tx }) {
+export function TxRow({ t, timeOnly }: { t: Tx; timeOnly?: boolean }) {
   const income = t.type === "INCOME";
+  const color = income ? "var(--color-save)" : colorOf(t.category);
+  const meta = [t.category, t.issuer, t.member?.name].filter(Boolean).join(", ");
   return (
-    <div className={`flex items-center gap-3 py-2.5 ${t.cancelled || t.status === "IGNORED" ? "opacity-40" : ""}`}>
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
-        style={{ background: income ? "var(--color-save)" : colorOf(t.category) }}
-      >
-        {(income ? "입" : t.category).slice(0, 2)}
+    <div className={`flex items-center gap-3 py-3 ${t.cancelled || t.status === "IGNORED" ? "opacity-40" : ""}`}>
+      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-[12px] font-bold">
+        <span className="absolute inset-0 opacity-15" style={{ background: color }} />
+        <span className="relative" style={{ color }}>
+          {(income ? "입금" : t.category).slice(0, 2)}
+        </span>
       </span>
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-[15px] font-semibold ${t.cancelled ? "line-through" : ""}`}>
-          {t.merchant}
-          {t.status === "REVIEW" && <span className="ml-1.5 rounded bg-spend-soft px-1.5 py-0.5 text-[10px] text-spend">확인</span>}
+        <p className={`flex items-center gap-1.5 text-[15px] font-semibold ${t.cancelled ? "line-through" : ""}`}>
+          <span className="truncate">{t.merchant}</span>
+          {t.status === "REVIEW" && (
+            <span className="shrink-0 rounded-md bg-spend-soft px-1.5 py-0.5 text-[10px] font-bold text-spend">확인</span>
+          )}
+          {t.cancelled && <span className="shrink-0 text-[11px] font-medium text-sub no-underline">취소됨</span>}
         </p>
-        <p className="truncate text-xs text-sub">
-          {fmtKst(t.occurredAt)} · {t.category}
-          {t.issuer ? ` · ${t.issuer}` : ""}
-          {t.member ? ` · ${t.member.name}` : ""}
+        <p className="truncate text-[12px] text-sub">
+          <span className="num">{timeOnly ? fmtKst(t.occurredAt).split(" ")[1] : fmtKst(t.occurredAt)}</span>
+          <span className="ml-1.5">{meta}</span>
         </p>
       </div>
       <p className={`num shrink-0 text-[15px] font-bold ${income ? "text-save" : ""}`}>
-        {income ? "+" : "-"}
+        {income ? "+" : "−"}
         {t.amount.toLocaleString("ko-KR")}
       </p>
     </div>

@@ -11,7 +11,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1f6b52",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#edf0f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e131a" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,8 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-dvh">
-        <div className="mx-auto max-w-3xl px-4 pt-5 pb-28 md:pb-10">{children}</div>
         <Nav />
+        <div className="mx-auto max-w-xl px-4 pt-5 pb-28 md:pt-8 md:pb-12">{children}</div>
       </body>
     </html>
   );
