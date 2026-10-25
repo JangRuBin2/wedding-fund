@@ -7,6 +7,6 @@ src/generated
 *.tsbuildinfo
 next-env.d.ts
 .expo
-android
-ios
+/app/android
+/app/ios
 *.apk

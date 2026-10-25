@@ -1,0 +1,100 @@
+name: Android APK
+
+# app/ 이 바뀌면 자동으로 APK를 빌드해서 GitHub Releases에 올림.
+# 폰에서 레포의 Releases 페이지 → 최신 apk-* → wedding-fund.apk 받아서 설치하면 됨.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Expo prebuild (android 네이티브 프로젝트 생성)
+        run: npx expo prebuild --platform android --no-install --clean
+
+      # 서명 키를 secrets에 넣어두면 그걸로 서명 → 업데이트 시 덮어쓰기 설치 가능.
+      # 없으면 디버그 키로 서명 (빌드마다 키가 달라져서 업데이트 때 기존 앱 삭제 후 설치해야 함)
+      - name: Release signing (optional)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "서명 키 없음 → 디버그 키로 서명"; exit 0; fi
+          echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
+          cat >> android/app/build.gradle <<EOF
+
+          android {
+            signingConfigs {
+              ci {
+                storeFile file("release.keystore")
+                storePassword "$KEYSTORE_PASSWORD"
+                keyAlias "$KEY_ALIAS"
+                keyPassword "$KEY_PASSWORD"
+              }
+            }
+            buildTypes { release { signingConfig signingConfigs.ci } }
+          }
+          EOF
+
+      - name: Build release APK
+        working-directory: app/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+
+      - name: Rename
+        run: cp android/app/build/outputs/apk/release/app-release.apk wedding-fund.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wedding-fund-apk
+          path: app/wedding-fund.apk
+
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-${{ github.run_number }}"
+          gh release create "$TAG" wedding-fund.apk \
+            --title "결혼자금 APK #${{ github.run_number }}" \
+            --notes "커밋 ${GITHUB_SHA::7} 빌드. 갤럭시에서 wedding-fund.apk 받아서 설치 (출처를 알 수 없는 앱 허용 필요)" \
+            --target "$GITHUB_SHA" --latest
