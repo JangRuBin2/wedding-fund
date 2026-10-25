@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { askClaude, LLM_MODEL } from "./llm";
+import { askLLM, LLM_MODEL } from "./llm";
 import { getGoalStatus } from "./goal";
 import { byCategory, expensesBetween, lateNight, topMerchants, detectRecurring, weekdayVsWeekend } from "./analytics";
 import { kstWeekStart, kstMonthStart, DAY, WEEKDAYS, kstParts, manwon } from "./time";
@@ -49,7 +49,7 @@ export async function generateWeeklyFeedback(now = new Date()) {
     },
   };
 
-  const llm = await askClaude({
+  const llm = await askLLM({
     system: [
       "너는 결혼자금을 모으는 20대 후반 직장인의 가계부 코치다.",
       "반말, 직설적, 짧게. 칭찬은 근거 있을 때만 한 줄. 돌려 말하지 말고 숫자로 말해.",

@@ -2,12 +2,13 @@ import { prisma } from "@/lib/db";
 import { kstParts, DAY } from "@/lib/time";
 import { generateFeedbackNow } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { hasLlmKey } from "@/lib/llm";
 
 export const dynamic = "force-dynamic";
 
 export default async function FeedbackPage() {
   const list = await prisma.feedback.findMany({ orderBy: { weekStart: "desc" }, take: 12 });
-  const hasKey = !!process.env.ANTHROPIC_API_KEY;
+  const hasKey = hasLlmKey();
 
   return (
     <main className="space-y-5">
@@ -19,7 +20,7 @@ export default async function FeedbackPage() {
       </header>
       {!hasKey && (
         <p className="rounded-xl bg-card p-3.5 text-[13px] leading-relaxed text-sub">
-          지금은 규칙 기반 요약만 나와. 서버 <code className="rounded bg-paper px-1">.env</code>에 <code className="rounded bg-paper px-1">ANTHROPIC_API_KEY</code>를 넣으면 Claude가 패턴을 보고 코멘트를 써줌
+          지금은 규칙 기반 요약만 나와. 서버 <code className="rounded bg-paper px-1">.env</code>에 <code className="rounded bg-paper px-1">GEMINI_API_KEY</code>를 넣으면 Gemini가 패턴을 보고 코멘트를 써줌
         </p>
       )}
       {list.length === 0 && (

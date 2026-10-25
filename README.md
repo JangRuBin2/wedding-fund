@@ -8,7 +8,7 @@
    │  1차 필터: "금액+원" & "승인/결제/입금…" 둘 다 있을 때만
    ▼
 [서버] POST /api/ingest  (Bearer INGEST_TOKEN)
-   │  파서 → 중복 제거(푸시+문자 이중 수신) → 취소 매칭 → 카테고리 분류(학습 규칙 → 키워드 → Claude)
+   │  파서 → 중복 제거(푸시+문자 이중 수신) → 취소 매칭 → 카테고리 분류(학습 규칙 → 키워드 → Gemini)
    │  큰 결제면 "목표 N일 밀림" 넛지 응답 → 폰에 알림
    ▼
 [대시보드] Next.js — 홈 / 내역 / 패턴 / 주간 피드백 / 설정
@@ -40,7 +40,9 @@ npm run dev                   # http://localhost:3000
 ```cron
 41 8 * * 1  curl -s -H "Authorization: Bearer $CRON_SECRET" https://money.내도메인/api/cron/weekly-feedback
 ```
-`ANTHROPIC_API_KEY` 있으면 Claude가 직설 피드백 + 모르는 가맹점 자동 분류. 없으면 규칙 기반으로 동작.
+`GEMINI_API_KEY` 있으면 Gemini가 직설 피드백 + 모르는 가맹점 자동 분류. 없으면 규칙 기반으로 동작.
+키는 [Google AI Studio](https://aistudio.google.com/apikey)에서 카드 없이 무료 발급(프리티어). 한도(429)에 걸리면 그 호출만 규칙 기반으로 폴백하고, 분류 실패한 가맹점은 다음 결제 때 다시 시도함.
+프리티어는 입력·출력이 Google 모델 개선에 쓰일 수 있음 (가맹점명·금액 통계가 넘어감).
 
 ## 2. 안드로이드 앱
 

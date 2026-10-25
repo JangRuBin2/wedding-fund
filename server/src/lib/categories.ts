@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { askClaude } from "./llm";
+import { askLLM } from "./llm";
 import { normalizeMerchant } from "./parser";
 
 export const EXPENSE_CATEGORIES = [
@@ -59,7 +59,7 @@ export async function categorize(merchant: string, type: "EXPENSE" | "INCOME", r
   const byRule = categorizeByRules(merchant, type, rawText);
   if (byRule !== "기타" || type === "INCOME" || merchant === "알 수 없음") return byRule;
 
-  const llm = await askClaude({
+  const llm = await askLLM({
     system:
       "너는 한국 카드 결제 가맹점명을 가계부 카테고리로 분류한다. 반드시 주어진 목록 중 하나의 단어만 출력한다.",
     user: `카테고리 목록: ${EXPENSE_CATEGORIES.join(", ")}\n가맹점명: ${merchant}\n정답 카테고리:`,
