@@ -1,53 +1,88 @@
 @import "tailwindcss";
 
 /*
- * 적금 통장 톤: 차가운 종이 + 남색 표지 + 은행 관례 색 (입금/저축 = 파랑, 출금/초과 = 빨강)
- * 토큰 이름은 기존 페이지 호환을 위해 유지 (save = 저축/입금, spend = 지출/초과)
+ * iOS Liquid Glass 톤: 은은한 색 번짐 배경 위에 반투명 유리 카드.
+ * 색 의미는 그대로 (save = 저축/입금 파랑, spend = 지출/초과 빨강, warn = 주의 주황)
  */
 @theme {
-  --color-paper: #edf0f4;
+  --color-paper: #eef1f7;
   --color-card: #ffffff;
-  --color-ink: #142033;
-  --color-sub: #5f6b7a;
-  --color-faint: #8a95a3;
-  --color-line: #dde2e9;
-  --color-save: #1f5fd1;
-  --color-save-soft: #e5edfb;
-  --color-spend: #d43c4c;
-  --color-spend-soft: #fbe8ea;
-  --color-warn: #b7791f;
-  --color-cover: #17284a;
-  --color-cover-ink: #f3f6fb;
-  --color-cover-sub: #9fb0cc;
-  --color-cover-line: #2b3f66;
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
+  --color-ink: #10182b;
+  --color-sub: #5b6577;
+  --color-faint: #8b94a5;
+  --color-line: rgba(16, 24, 43, 0.08);
+  --color-save: #2563eb;
+  --color-save-soft: rgba(37, 99, 235, 0.12);
+  --color-spend: #e0384b;
+  --color-spend-soft: rgba(224, 56, 75, 0.12);
+  --color-warn: #c27410;
+  --color-warn-soft: rgba(194, 116, 16, 0.13);
+  --color-ok: #16a34a;
+  --color-accent: #2563eb;
+  --color-glass: rgba(255, 255, 255, 0.58);
+  --color-glass-strong: rgba(255, 255, 255, 0.78);
+  --color-glass-edge: rgba(255, 255, 255, 0.75);
+  --color-fill: rgba(16, 24, 43, 0.05);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-paper: #0e131a;
-    --color-card: #171d26;
-    --color-ink: #e8edf3;
-    --color-sub: #96a2b2;
-    --color-faint: #6b7686;
-    --color-line: #263040;
-    --color-save: #6f9dff;
-    --color-save-soft: #17243d;
-    --color-spend: #ff6b78;
-    --color-spend-soft: #3a1c22;
-    --color-cover: #1b2a47;
-    --color-cover-ink: #eef2f8;
-    --color-cover-sub: #8fa1c0;
-    --color-cover-line: #2e4169;
+    --color-paper: #070b14;
+    --color-card: #141a26;
+    --color-ink: #eef2f8;
+    --color-sub: #a3adbd;
+    --color-faint: #6f7a8b;
+    --color-line: rgba(255, 255, 255, 0.08);
+    --color-save: #6ea0ff;
+    --color-save-soft: rgba(110, 160, 255, 0.16);
+    --color-spend: #ff6b7a;
+    --color-spend-soft: rgba(255, 107, 122, 0.15);
+    --color-warn: #f0b04f;
+    --color-warn-soft: rgba(240, 176, 79, 0.15);
+    --color-ok: #4ade80;
+    --color-accent: #3d6fe6;
+    --color-glass: rgba(30, 38, 54, 0.55);
+    --color-glass-strong: rgba(34, 42, 60, 0.82);
+    --color-glass-edge: rgba(255, 255, 255, 0.1);
+    --color-fill: rgba(255, 255, 255, 0.06);
   }
 }
 
-body {
+html {
   background: var(--color-paper);
+}
+
+body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   word-break: keep-all;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 유리 뒤에 비칠 색 번짐. 스크롤해도 고정 */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 45% at 10% 0%, rgba(125, 160, 255, 0.45), transparent 70%),
+    radial-gradient(50% 40% at 100% 15%, rgba(255, 170, 200, 0.4), transparent 70%),
+    radial-gradient(55% 45% at 85% 95%, rgba(150, 220, 255, 0.4), transparent 70%),
+    radial-gradient(45% 35% at 0% 80%, rgba(255, 210, 160, 0.35), transparent 70%),
+    var(--color-paper);
+}
+@media (prefers-color-scheme: dark) {
+  .ambient {
+    background:
+      radial-gradient(60% 45% at 10% 0%, rgba(60, 90, 200, 0.45), transparent 70%),
+      radial-gradient(50% 40% at 100% 15%, rgba(160, 60, 120, 0.3), transparent 70%),
+      radial-gradient(55% 45% at 85% 95%, rgba(30, 110, 160, 0.35), transparent 70%),
+      radial-gradient(45% 35% at 0% 80%, rgba(150, 90, 40, 0.25), transparent 70%),
+      var(--color-paper);
+  }
 }
 
 .num {
@@ -55,64 +90,181 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* 흰 종이 한 장. 섹션 제목은 바깥에 둬서 카드마다 제목 박히는 느낌을 줄임 */
+/* 유리 한 장 */
+.glass,
 .card {
-  background: var(--color-card);
-  border-radius: 16px;
-  padding: 18px;
+  background: var(--color-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--color-glass-edge);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.35) inset,
+    0 8px 28px -12px rgba(20, 30, 60, 0.18);
+}
+.card {
+  border-radius: 26px;
+  padding: 20px;
+}
+
+/* 중요한 숫자 하나를 담는 색유리 (홈 목표 카드) */
+.glass-tint {
+  border-radius: 30px;
+  padding: 22px;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
+    linear-gradient(140deg, #3b6cf6 0%, #6d55e8 55%, #b05ad6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.45) inset,
+    0 18px 40px -16px rgba(70, 70, 200, 0.55);
+}
+@media (prefers-color-scheme: dark) {
+  .glass-tint {
+    background:
+      radial-gradient(120% 90% at 0% 0%, rgba(255, 255, 255, 0.16), transparent 55%),
+      linear-gradient(140deg, #2a4fc0 0%, #4b3ab0 55%, #7b3d9e 100%);
+  }
+}
+
+/* iOS 큰 제목 */
+.page-title {
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.page-sub {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--color-sub);
 }
 
 .section-title {
-  font-size: 15px;
-  font-weight: 700;
-  padding: 0 4px;
-  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  padding: 0 6px;
+  margin-bottom: 10px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
 .section-title small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-sub);
 }
 
 .label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-sub);
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.help {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-sub);
 }
 
 .input {
   width: 100%;
-  background: var(--color-paper);
+  background: var(--color-fill);
   border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 15px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 16px;
   outline: none;
+  transition: background 0.15s, border-color 0.15s;
 }
 .input:focus {
   border-color: var(--color-save);
-  background: var(--color-card);
+  background: var(--color-glass-strong);
 }
 
+/* 캡슐 버튼 */
 .btn {
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 13px 20px;
+  font-size: 15px;
   font-weight: 700;
-  background: var(--color-ink);
-  color: var(--color-card);
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 6px 18px -8px var(--color-accent);
+  transition: transform 0.12s, opacity 0.12s;
+}
+.btn:active {
+  transform: scale(0.97);
 }
 .btn-ghost {
-  border-radius: 9px;
-  padding: 7px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  background: var(--color-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 650;
+  background: var(--color-glass-strong);
+  border: 1px solid var(--color-glass-edge);
   color: var(--color-ink);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  transition: transform 0.12s;
+}
+.btn-ghost:active {
+  transform: scale(0.96);
+}
+
+/* 유리 위 작은 알약 (상태 표시) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 세그먼트 컨트롤 */
+.segment {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--color-fill);
+}
+.segment > * {
+  flex: 1;
+  text-align: center;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--color-sub);
+  white-space: nowrap;
+}
+.segment > [aria-current="page"],
+.segment > [aria-checked="true"] {
+  background: var(--color-glass-strong);
+  color: var(--color-ink);
+  box-shadow:
+    0 0 0 1px var(--color-glass-edge) inset,
+    0 2px 8px -2px rgba(20, 30, 60, 0.2);
+}
+
+.bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-fill);
+  overflow: hidden;
 }
 
 :focus-visible {
@@ -120,7 +272,20 @@ body {
   outline-offset: 2px;
 }
 
-/* 장부 행: 왼쪽 항목, 오른쪽 금액 */
+/* 목록 행 사이 얇은 선 */
 .ledger > * + * {
   border-top: 1px solid var(--color-line);
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+.chev {
+  transition: transform 0.2s;
+}
+details[open] > summary .chev {
+  transform: rotate(90deg);
 }

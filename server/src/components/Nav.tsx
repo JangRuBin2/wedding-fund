@@ -31,8 +31,9 @@ const TABS = [
 export function Nav() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-card/90 backdrop-blur-md md:sticky md:top-0 md:bottom-auto md:border-t-0 md:border-b">
-      <ul className="mx-auto grid max-w-3xl grid-cols-5 pb-[env(safe-area-inset-bottom)] md:max-w-xl">
+    // iOS 탭바처럼 화면 아래 떠 있는 유리 캡슐. 데스크톱에선 위에 붙음
+    <nav className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(14px,env(safe-area-inset-bottom))] md:top-0 md:bottom-auto md:pt-4 md:pb-0">
+      <ul className="glass mx-auto grid max-w-md grid-cols-5 rounded-full p-1.5">
         {TABS.map((t) => {
           const active =
             t.href === "/" ? path === "/" : path.startsWith(t.href) || (t.href === "/patterns" && path.startsWith("/feedback"));
@@ -41,8 +42,8 @@ export function Nav() {
               <Link
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 pt-2.5 pb-2 text-[11px] font-semibold md:flex-row md:justify-center md:gap-1.5 md:py-3 md:text-[13px] ${
-                  active ? "text-ink" : "text-faint"
+                className={`flex flex-col items-center gap-0.5 rounded-full py-2 text-[11px] font-semibold transition-colors ${
+                  active ? "bg-save-soft text-save" : "text-sub"
                 }`}
               >
                 <svg
@@ -54,7 +55,6 @@ export function Nav() {
                   strokeWidth={active ? 2.2 : 1.8}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="md:h-[18px] md:w-[18px]"
                   aria-hidden
                 >
                   {t.icon}

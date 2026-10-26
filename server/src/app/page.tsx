@@ -5,9 +5,10 @@ import { byCategory, detectRecurring, expensesBetween } from "@/lib/analytics";
 import { normalizeMerchant } from "@/lib/parser";
 import { WEDDING_CATEGORY } from "@/lib/categories";
 import { dueLabel, weddingOverview } from "@/lib/wedding";
-import { kstMonthStart, kstParts, manwon, monthKey, DAY } from "@/lib/time";
+import { kstMonthStart, kstParts, manwon, monthKey, DAY, WEEKDAYS } from "@/lib/time";
 import { CategoryBreakdown, DailyBars } from "@/components/Charts";
 import { TxRow } from "@/components/TxRow";
+import { Chevron } from "@/components/Chevron";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,16 @@ async function monthTrack(status: NonNullable<GoalStatus>, now: Date): Promise<C
 }
 
 function paceMessage(s: NonNullable<GoalStatus>) {
-  if (s.remaining === 0) return { ok: true, text: "목표 금액 다 모았어" };
+  if (s.remaining === 0) return { ok: true, icon: "🎉", text: "목표 금액을 다 모았어요!" };
   if (!s.projectedDate || s.projectedDate.getTime() - s.goal.targetDate.getTime() > 5 * 365 * DAY) {
-    return { ok: false, text: `최근 페이스로는 목표일까지 못 모아. 매달 ${manwon(s.requiredPerMonth)}원은 남겨야 함` };
+    return { ok: false, icon: "🐢", text: `요즘 속도로는 결혼식 전까지 모으기 어려워요. 한 달에 ${manwon(s.requiredPerMonth)}원씩은 남겨야 해요` };
   }
   const p = kstParts(s.projectedDate);
   const gapMonths = Math.round((s.goal.targetDate.getTime() - s.projectedDate.getTime()) / (30.44 * DAY));
   const when = `${p.year}년 ${p.month + 1}월`;
-  if (s.onTrack) return { ok: true, text: `이 페이스면 ${when}에 다 모음${gapMonths > 0 ? `, 목표보다 ${gapMonths}개월 빠름` : ""}` };
-  return { ok: false, text: `이 페이스면 ${when}에 다 모음, 목표보다 ${Math.max(1, -gapMonths)}개월 늦음` };
+  if (s.onTrack)
+    return { ok: true, icon: "👍", text: `지금 속도면 ${when}에 다 모아요${gapMonths > 0 ? `. 목표보다 ${gapMonths}개월 빨라요` : ""}` };
+  return { ok: false, icon: "⏳", text: `지금 속도면 ${when}에 다 모아요. 목표보다 ${Math.max(1, -gapMonths)}개월 늦어요` };
 }
 
 export default async function Home() {
@@ -97,157 +99,183 @@ export default async function Home() {
   const pace = status ? paceMessage(status) : null;
   const upcoming = wedding.upcoming.filter((i) => i.daysUntil <= 90).slice(0, 3);
 
+  const todayUsedRatio = perDay > 0 ? Math.min(1, spentToday / perDay) : 1;
+  const monthRatio = status ? Math.max(0, Math.min(1, status.monthNet / Math.max(1, status.requiredPerMonth))) : 0;
+  const monthOk = status ? status.monthNet >= status.requiredPerMonth : false;
+
   return (
-    <main className="space-y-7">
+    <main className="space-y-8">
+      <header className="flex items-end justify-between px-1.5">
+        <div>
+          <p className="text-[14px] font-semibold text-sub">
+            {month + 1}월 {date}일 {WEEKDAYS[kstParts(now).weekday]}요일
+          </p>
+          <h1 className="page-title mt-0.5">{status?.goal.title ?? "결혼자금"}</h1>
+        </div>
+        {status && <span className="pill num glass mb-1 !px-3 !py-1.5 !text-[14px]">💍 D-{status.daysLeft}</span>}
+      </header>
+
       {reviewCount > 0 && (
-        <Link
-          href="/transactions?status=REVIEW"
-          className="flex items-center justify-between rounded-xl bg-spend-soft px-4 py-3 text-sm font-semibold text-spend"
-        >
-          <span>카테고리 확인이 필요한 결제 {reviewCount}건</span>
-          <span className="text-xs">확인하기</span>
+        <Link href="/transactions?status=REVIEW" className="glass flex items-center gap-3 rounded-[22px] px-4 py-3.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warn-soft text-[18px]">🧐</span>
+          <span className="flex-1">
+            <span className="block text-[15px] font-bold">분류가 애매한 결제가 {reviewCount}건 있어요</span>
+            <span className="block text-[13px] text-sub">눌러서 어디에 쓴 건지 알려주세요</span>
+          </span>
+          <Chevron />
         </Link>
       )}
 
       {status ? (
-        <section className="rounded-[20px] bg-cover p-5 text-cover-ink">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[15px] font-semibold text-cover-sub">{status.goal.title}</p>
-            <p className="num text-[15px] font-bold">D-{status.daysLeft}</p>
-          </div>
-          <p className="num mt-3 text-[40px] leading-none font-extrabold">
+        <section className="glass-tint">
+          <p className="text-[15px] font-semibold text-white/80">지금까지 모은 돈</p>
+          <p className="num mt-1.5 text-[44px] leading-none font-extrabold">
             {manwon(status.progressAmount)}
-            <span className="ml-0.5 text-[24px] font-bold">원</span>
+            <span className="ml-0.5 text-[26px] font-bold">원</span>
           </p>
-          <p className="mt-2 text-[14px] text-cover-sub">
-            <span className="num">{manwon(status.goal.targetAmount)}원</span> 중{" "}
-            <b className="num text-cover-ink">{Math.floor(status.progress * 100)}%</b> 모음
-          </p>
+          <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/25">
+            <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(1, status.progress) * 100}%` }} />
+          </div>
+          <div className="num mt-2 flex justify-between text-[14px] text-white/85">
+            <span className="font-bold text-white">{Math.floor(status.progress * 100)}% 모았어요</span>
+            <span>목표 {manwon(status.goal.targetAmount)}원</span>
+          </div>
           {status.weddingSpent > 0 && (
-            <p className="num mt-1 text-[12px] text-cover-sub">
-              통장 {manwon(status.balance)}원 + 결혼준비에 이미 쓴 {manwon(status.weddingSpent)}원
+            <p className="num mt-1 text-[13px] text-white/70">
+              통장에 {manwon(status.balance)}원 + 결혼 준비에 이미 낸 {manwon(status.weddingSpent)}원
             </p>
           )}
 
-          <div className="mt-6">
-            <div className="mb-2 flex items-baseline justify-between text-[12px] text-cover-sub">
-              <span>월별 저축</span>
-              <span className="num">한 칸 기준 {manwon(baseline)}원</span>
-            </div>
-            <div className="flex h-9 items-end gap-[3px]">
+          {pace && (
+            <p className="mt-5 flex items-start gap-2.5 rounded-[18px] bg-white/15 px-4 py-3 text-[15px] leading-snug font-semibold">
+              <span aria-hidden>{pace.icon}</span>
+              <span>{pace.text}</span>
+            </p>
+          )}
+
+          <div className="mt-5">
+            <p className="mb-2 text-[13px] text-white/80">
+              달마다 모은 돈 <span className="text-white/60">· 칸이 꽉 차면 그달 목표 {manwon(baseline)}원 달성</span>
+            </p>
+            <div className="flex h-10 items-end gap-[3px]">
               {track.map((c) => {
                 const ratio = c.net == null ? 0 : Math.max(0, Math.min(1, c.net / baseline));
                 const neg = c.net != null && c.net < 0;
                 return (
                   <div
                     key={c.key}
-                    title={c.net == null ? `${c.year}.${c.label}` : `${c.year}.${c.label} 저축 ${manwon(c.net)}원`}
-                    className={`relative h-full flex-1 overflow-hidden rounded-[4px] ${c.current ? "ring-1 ring-cover-ink" : ""} ${
-                      neg ? "bg-spend/70" : "bg-cover-line"
+                    title={c.net == null ? `${c.year}.${c.label}` : `${c.year}년 ${c.label}월 ${manwon(c.net)}원`}
+                    className={`relative h-full flex-1 overflow-hidden rounded-[5px] ${c.current ? "ring-2 ring-white" : ""} ${
+                      neg ? "bg-[#ff8a96]" : "bg-white/20"
                     }`}
                   >
-                    {!neg && <span className="absolute inset-x-0 bottom-0 bg-save" style={{ height: `${ratio * 100}%` }} />}
+                    {!neg && <span className="absolute inset-x-0 bottom-0 bg-white" style={{ height: `${ratio * 100}%` }} />}
                   </div>
                 );
               })}
             </div>
-            <div className="num mt-1.5 flex justify-between text-[11px] text-cover-sub">
+            <div className="num mt-1.5 flex justify-between text-[12px] text-white/70">
               <span>
                 {track[0]?.year}.{track[0]?.label}
               </span>
               <span>
-                {track.at(-1)?.year}.{track.at(-1)?.label}
+                {track.at(-1)?.year}.{track.at(-1)?.label} 결혼식
               </span>
             </div>
           </div>
-
-          {pace && (
-            <p className="mt-5 flex items-start gap-2 border-t border-cover-line pt-4 text-[14px] leading-snug">
-              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${pace.ok ? "bg-save" : "bg-spend"}`} />
-              {pace.text}
-            </p>
-          )}
         </section>
       ) : (
-        <Link href="/settings" className="block rounded-[20px] bg-cover p-6 text-cover-ink">
-          <p className="text-lg font-bold">목표부터 정하자</p>
-          <p className="mt-1 text-sm text-cover-sub">목표 금액이랑 날짜를 넣으면 매달 얼마 모아야 하는지 계산해줌</p>
+        <Link href="/settings" className="glass-tint block">
+          <p className="text-[28px]">🎯</p>
+          <p className="mt-2 text-[22px] font-bold">목표부터 정해볼까요?</p>
+          <p className="mt-1 text-[15px] leading-relaxed text-white/80">목표 금액이랑 결혼식 날짜만 넣으면 한 달에 얼마씩 모아야 하는지 계산해 드려요</p>
+          <span className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-[15px] font-bold text-[#3b4fd8]">목표 정하기</span>
         </Link>
       )}
 
       {status && (
-        <section className="card">
-          {variableLeft <= 0 ? (
-            <>
-              <p className="text-[14px] text-sub">이번 달 생활비</p>
-              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-variableLeft)}원 넘음</p>
-              <p className="mt-1.5 text-[13px] leading-snug text-sub">
-                목표 저축 <span className="num">{manwon(status.requiredPerMonth)}원</span>을 지키려면 남은 {daysLeftInMonth}일은 꼭 필요한 데만 쓰자
+        <section>
+          <h2 className="section-title">오늘</h2>
+          <div className="card">
+            {variableLeft <= 0 ? (
+              <>
+                <p className="text-[15px] font-semibold text-sub">이번 달 생활비를 다 썼어요</p>
+                <p className="num mt-1 text-[32px] leading-tight font-extrabold text-spend">{manwon(-variableLeft)}원 넘었어요</p>
+                <p className="help mt-2 !text-[14px]">
+                  이번 달 저축 목표 <span className="num">{manwon(status.requiredPerMonth)}원</span>을 지키려면 남은 {daysLeftInMonth}일은 꼭 필요한
+                  곳에만 써 주세요
+                </p>
+              </>
+            ) : todayLeft > 0 ? (
+              <>
+                <p className="text-[15px] font-semibold text-sub">오늘 더 써도 되는 돈</p>
+                <p className="num mt-1 text-[38px] leading-tight font-extrabold">
+                  {manwon(todayLeft)}
+                  <span className="text-[22px] font-bold">원</span>
+                </p>
+                <div className="bar-track mt-4">
+                  <div className="h-full rounded-full bg-save" style={{ width: `${todayUsedRatio * 100}%` }} />
+                </div>
+                <p className="num mt-2 flex justify-between text-[13px] text-sub">
+                  <span>오늘 {manwon(spentToday)}원 썼어요</span>
+                  <span>하루 몫 {manwon(perDay)}원</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[15px] font-semibold text-sub">오늘 하루 몫을 넘었어요</p>
+                <p className="num mt-1 text-[32px] leading-tight font-extrabold text-spend">{manwon(-todayLeft)}원 더 썼어요</p>
+                <div className="bar-track mt-4">
+                  <div className="h-full rounded-full bg-spend" style={{ width: "100%" }} />
+                </div>
+                <p className="help mt-2 !text-[14px]">
+                  {daysLeftInMonth > 1 ? (
+                    <>
+                      괜찮아요. 내일부터 하루 <b className="num text-ink">{manwon(tomorrowPerDay)}원</b>씩만 쓰면 이번 달 목표를 지킬 수 있어요
+                    </>
+                  ) : (
+                    "오늘이 이번 달 마지막 날이에요"
+                  )}
+                </p>
+              </>
+            )}
+            {fixedTotal > 0 && (
+              <p className="help mt-4 flex gap-2 rounded-[16px] bg-fill px-3.5 py-3">
+                <span aria-hidden>📌</span>
+                <span>
+                  월세·통신비·구독 같은 고정비 <span className="num font-semibold text-ink">{manwon(fixedTotal)}원</span>은 미리 빼고 계산했어요
+                  {fixedComing > 0 && (
+                    <>
+                      . 이번 달에 <span className="num font-semibold text-ink">{manwon(fixedComing)}원</span> 더 나갈 예정이에요
+                    </>
+                  )}
+                </span>
               </p>
-            </>
-          ) : todayLeft > 0 ? (
-            <>
-              <p className="text-[14px] text-sub">오늘 더 쓸 수 있는 돈</p>
-              <p className="num mt-1 text-[30px] leading-tight font-extrabold">
-                {manwon(todayLeft)}
-                <span className="text-[18px] font-bold">원</span>
-              </p>
-              <p className="mt-1.5 text-[13px] leading-snug text-sub">
-                오늘 몫 <span className="num">{manwon(perDay)}원</span>
-                {spentToday > 0 ? (
-                  <>
-                    {" "}중 <span className="num">{manwon(spentToday)}원</span> 씀
-                  </>
-                ) : null}
-                . 이번 달 남은 {daysLeftInMonth}일 동안 <span className="num">{manwon(variableLeft)}원</span>
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-[14px] text-sub">
-                오늘 몫 <span className="num">{manwon(perDay)}원</span> 중 <span className="num">{manwon(spentToday)}원</span> 씀
-              </p>
-              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-todayLeft)}원 넘음</p>
-              <p className="mt-1.5 text-[13px] leading-snug text-sub">
-                {daysLeftInMonth > 1 ? (
-                  <>
-                    내일부터는 하루 <b className="num text-ink">{manwon(tomorrowPerDay)}원</b>씩 쓰면 이번 달 목표 지킬 수 있어
-                  </>
-                ) : (
-                  "오늘이 이번 달 마지막 날"
-                )}
-              </p>
-            </>
-          )}
-          {fixedTotal > 0 && (
-            <p className="mt-3 border-t border-line pt-3 text-[12px] text-sub">
-              월세·구독 같은 고정비 <span className="num">{manwon(fixedTotal)}원</span>은 따로 뺐어
-              {fixedComing > 0 && (
-                <>
-                  , 이번 달 <span className="num">{manwon(fixedComing)}원</span> 더 나갈 예정
-                </>
-              )}
-            </p>
-          )}
+            )}
+          </div>
         </section>
       )}
 
       {upcoming.length > 0 && (
         <section>
           <h2 className="section-title">
-            다가오는 결혼 준비 결제
-            <Link href="/wedding" className="text-[13px] font-semibold text-save">
-              예산표
+            곧 내야 할 결혼 준비 비용
+            <Link href="/wedding" className="text-[14px] font-semibold text-save">
+              예산표 보기
             </Link>
           </h2>
-          <ul className="card ledger !py-1">
+          <ul className="card ledger !py-1.5">
             {upcoming.map((i) => (
               <li key={i.id} className="flex items-center gap-3 py-3">
-                <span className={`num w-14 shrink-0 text-[13px] font-bold ${i.daysUntil < 0 ? "text-spend" : "text-sub"}`}>
+                <span
+                  className={`pill num w-[60px] shrink-0 justify-center ${
+                    i.daysUntil < 0 ? "bg-spend-soft text-spend" : i.daysUntil <= 30 ? "bg-warn-soft text-warn" : "bg-fill text-sub"
+                  }`}
+                >
                   {dueLabel(i.daysUntil)}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{i.name}</span>
-                <span className="num shrink-0 text-[15px] font-bold">{manwon(i.due)}원</span>
+                <span className="min-w-0 flex-1 truncate text-[16px] font-semibold">{i.name}</span>
+                <span className="num shrink-0 text-[16px] font-bold">{manwon(i.due)}원</span>
               </li>
             ))}
           </ul>
@@ -256,110 +284,126 @@ export default async function Home() {
 
       <section>
         <h2 className="section-title">
-          {month + 1}월 통장
+          {month + 1}월 살림
           <small>{date}일째</small>
         </h2>
-        <div className="card !py-1">
-          <div className="ledger">
-            <Row label="들어온 돈" value={`+${manwon(status?.monthIncome ?? 0)}원`} tone="save" />
-            <Row label="생활비" value={`−${manwon(livingSpent)}원`} />
-            {status && status.monthWedding > 0 && <Row label="결혼준비 결제" value={`−${manwon(status.monthWedding)}원`} muted />}
-            {status && (
-              <div className="py-3.5">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[15px] font-semibold">모은 돈</span>
-                  <span className={`num text-[17px] font-bold ${status.monthNet >= status.requiredPerMonth ? "text-save" : "text-spend"}`}>
-                    {manwon(status.monthNet)}원
-                  </span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper">
-                  <div
-                    className={`h-full rounded-full ${status.monthNet >= status.requiredPerMonth ? "bg-save" : "bg-spend"}`}
-                    style={{ width: `${Math.max(0, Math.min(1, status.monthNet / Math.max(1, status.requiredPerMonth))) * 100}%` }}
-                  />
-                </div>
-                <p className="mt-1.5 text-[12px] text-sub">
-                  이번 달 목표 <span className="num">{manwon(status.requiredPerMonth)}원</span>
-                  {status.monthNet >= status.requiredPerMonth
-                    ? " 채움"
-                    : `까지 ${manwon(status.requiredPerMonth - status.monthNet)}원 남음`}
-                  {status.monthIncome < status.expectedIncome && ", 월급 들어오기 전"}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="section-title">
-          하루 생활비
-          {avgPerDay > 0 && <small>고정비 제외, 점선 = 하루 {manwon(avgPerDay)}원</small>}
-        </h2>
         <div className="card">
-          <DailyBars data={daily} budgetPerDay={avgPerDay || undefined} today={date} />
-          {avgPerDay > 0 && (
-            <p className="mt-2 text-[13px] text-sub">
-              {overDays ? (
-                <>
-                  이번 달 <b className="text-spend">{overDays}일</b>은 하루 몫을 넘김
-                </>
-              ) : (
-                "아직 하루 몫 넘긴 날 없음"
+          <div className="grid grid-cols-3 text-center">
+            <Stat label="들어온 돈" value={`+${manwon(status?.monthIncome ?? 0)}`} tone="text-save" />
+            <Stat label="생활비" value={`−${manwon(livingSpent)}`} />
+            <Stat
+              label="남긴 돈"
+              value={manwon(status?.monthNet ?? 0)}
+              tone={status ? (monthOk ? "text-save" : (status.monthNet ?? 0) < 0 ? "text-spend" : "") : ""}
+            />
+          </div>
+          {status && (
+            <div className="mt-5 border-t border-line pt-4">
+              <div className="bar-track">
+                <div className={`h-full rounded-full ${monthOk ? "bg-save" : "bg-warn"}`} style={{ width: `${monthRatio * 100}%` }} />
+              </div>
+              <p className="mt-2 text-[14px] text-sub">
+                {monthOk ? (
+                  <>
+                    🎉 이번 달 저축 목표 <span className="num font-semibold text-ink">{manwon(status.requiredPerMonth)}원</span>을 채웠어요
+                  </>
+                ) : (
+                  <>
+                    이번 달 저축 목표까지 <b className="num text-ink">{manwon(status.requiredPerMonth - status.monthNet)}원</b> 남았어요
+                    {status.monthIncome < status.expectedIncome && " (월급 들어오기 전)"}
+                  </>
+                )}
+              </p>
+              {status.monthWedding > 0 && (
+                <p className="num mt-1 text-[13px] text-faint">결혼 준비로 낸 {manwon(status.monthWedding)}원은 생활비에서 뺐어요</p>
               )}
-            </p>
+            </div>
           )}
         </div>
       </section>
 
       <section>
         <h2 className="section-title">
-          생활비 어디에 썼나
-          <small className="num">{manwon(livingSpent)}원</small>
+          날마다 쓴 생활비
+          {avgPerDay > 0 && <small className="num">하루 몫 {manwon(avgPerDay)}원</small>}
         </h2>
         <div className="card">
-          <CategoryBreakdown data={byCategory(living)} limit={6} />
+          <DailyBars data={daily} budgetPerDay={avgPerDay || undefined} today={date} />
+          {avgPerDay > 0 && (
+            <>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-sub">
+                <Legend color="bg-save" text="하루 몫 안에서 씀" />
+                <Legend color="bg-spend" text="하루 몫 넘음" />
+                <span className="flex items-center gap-1.5">
+                  <span className="w-4 border-t-2 border-dashed border-sub" />
+                  하루 몫
+                </span>
+              </div>
+              <p className="mt-3 text-[14px] font-semibold">
+                {overDays ? (
+                  <>
+                    이번 달은 <span className="text-spend">{overDays}일</span> 하루 몫을 넘겼어요
+                  </>
+                ) : (
+                  "👏 이번 달은 아직 하루 몫을 넘긴 날이 없어요"
+                )}
+              </p>
+            </>
+          )}
+          <p className="mt-1 text-[12px] text-faint">월세·구독 같은 고정비는 빼고 보여줘요</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="section-title">
+          어디에 많이 썼을까요
+          <small className="num">생활비 {manwon(livingSpent)}원</small>
+        </h2>
+        <div className="card !pb-2">
+          <CategoryBreakdown data={byCategory(living)} limit={5} />
         </div>
       </section>
 
       {members.length > 1 && (
         <section>
-          <h2 className="section-title">이번 달 각자</h2>
-          <div className="card !py-1">
-            <ul className="ledger">
-              {members.map((m) => {
-                const inc = m.transactions.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
-                const exp = m.transactions.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
-                return (
-                  <li key={m.id} className="flex items-center justify-between py-3 text-[14px]">
-                    <span className="font-semibold">{m.name}</span>
-                    <span className="num text-sub">
-                      <span className="text-save">+{manwon(inc)}</span> <span>−{manwon(exp)}</span>
-                      <b className={`ml-2 ${inc - exp >= 0 ? "text-ink" : "text-spend"}`}>{manwon(inc - exp)}</b>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <h2 className="section-title">이번 달 우리 둘</h2>
+          <ul className="grid grid-cols-2 gap-3">
+            {members.map((m) => {
+              const inc = m.transactions.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
+              const exp = m.transactions.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+              return (
+                <li key={m.id} className="card !p-4">
+                  <p className="text-[15px] font-bold">{m.name}</p>
+                  <p className={`num mt-1 text-[22px] font-extrabold ${inc - exp >= 0 ? "" : "text-spend"}`}>{manwon(inc - exp)}원</p>
+                  <p className="num mt-0.5 text-[12px] text-sub">
+                    <span className="text-save">+{manwon(inc)}</span> · −{manwon(exp)}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 
       {feedback && (
-        <Link href="/feedback" className="block rounded-2xl border-l-4 border-save bg-card px-4 py-3.5">
-          <p className="text-[12px] font-semibold text-save">지난주 코멘트</p>
-          <p className="mt-1 text-[15px] leading-snug font-semibold">{feedback.content.split("\n")[0]}</p>
+        <Link href="/feedback" className="card flex items-start gap-3 !p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-save-soft text-[20px]">💬</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-bold text-save">지난주 한마디</span>
+            <span className="mt-0.5 block text-[15px] leading-snug font-semibold">{feedback.content.split("\n")[0]}</span>
+          </span>
+          <Chevron />
         </Link>
       )}
 
       <section>
         <h2 className="section-title">
           최근 결제
-          <Link href="/transactions" className="text-[13px] font-semibold text-save">
+          <Link href="/transactions" className="text-[14px] font-semibold text-save">
             전체 보기
           </Link>
         </h2>
-        <div className="card !py-1">
+        <div className="card !py-1.5">
           {recent.length ? (
             <div className="ledger">
               {recent.map((t) => (
@@ -367,7 +411,11 @@ export default async function Home() {
               ))}
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-sub">폰 앱을 연결하면 결제 알림이 여기 쌓여</p>
+            <p className="py-8 text-center text-[15px] leading-relaxed text-sub">
+              📱 폰 앱을 연결하면
+              <br />
+              카드 결제가 여기에 자동으로 쌓여요
+            </p>
           )}
         </div>
       </section>
@@ -375,11 +423,21 @@ export default async function Home() {
   );
 }
 
-function Row({ label, value, tone, muted }: { label: string; value: string; tone?: "save"; muted?: boolean }) {
+function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="flex items-baseline justify-between py-3.5">
-      <span className="text-[15px] text-sub">{label}</span>
-      <span className={`num text-[17px] font-bold ${tone === "save" ? "text-save" : ""} ${muted ? "text-sub" : ""}`}>{value}</span>
+    <div className="px-1">
+      <p className="text-[13px] font-semibold text-sub">{label}</p>
+      <p className={`num mt-1 text-[19px] font-extrabold ${tone}`}>{value}</p>
     </div>
   );
 }
+
+function Legend({ color, text }: { color: string; text: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`h-2.5 w-2.5 rounded-[3px] ${color}`} />
+      {text}
+    </span>
+  );
+}
+

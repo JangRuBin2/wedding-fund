@@ -6,8 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "결혼자금",
     start_url: "/",
     display: "standalone",
-    background_color: "#edf0f4",
-    theme_color: "#17284a",
+    background_color: "#eef1f7",
+    theme_color: "#eef1f7",
     icons: [],
   };
 }

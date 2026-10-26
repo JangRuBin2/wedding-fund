@@ -21,3 +21,30 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const colorOf = (c: string) => CATEGORY_COLORS[c] ?? "#aab2bd";
+
+// 목록 아이콘. 글자 두 개보다 한눈에 들어옴
+const CATEGORY_EMOJI: Record<string, string> = {
+  식비: "🍚",
+  배달: "🛵",
+  카페: "☕️",
+  편의점: "🏪",
+  마트: "🛒",
+  쇼핑: "🛍️",
+  교통: "🚇",
+  구독: "📺",
+  통신: "📱",
+  의료: "💊",
+  "술/유흥": "🍺",
+  여가: "🎬",
+  생활: "🧺",
+  결혼준비: "💍",
+  경조사: "🎁",
+  저축: "🏦",
+  급여: "💰",
+  부수입: "💵",
+  이체: "🔁",
+  환불: "↩️",
+  기타수입: "💵",
+};
+
+export const emojiOf = (c: string) => CATEGORY_EMOJI[c] ?? "💳";

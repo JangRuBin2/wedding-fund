@@ -12,8 +12,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#edf0f4" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e131a" },
+    { media: "(prefers-color-scheme: light)", color: "#eef1f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#070b14" },
   ],
 };
 
@@ -27,8 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-dvh">
+        <div className="ambient" aria-hidden />
         <Nav />
-        <div className="mx-auto max-w-xl px-4 pt-5 pb-28 md:pt-8 md:pb-12">{children}</div>
+        <div className="mx-auto max-w-xl px-4 pt-[max(20px,env(safe-area-inset-top))] pb-36 md:pt-24 md:pb-16">{children}</div>
       </body>
     </html>
   );
