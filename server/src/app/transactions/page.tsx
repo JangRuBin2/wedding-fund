@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
-import { kstMonthStart, kstParts, manwon, WEEKDAYS } from "@/lib/time";
+import { fmtKst, kstMonthStart, kstParts, manwon, WEEKDAYS } from "@/lib/time";
+import { ReviewDeck, type ReviewItem } from "@/components/ReviewDeck";
 import { TxRow } from "@/components/TxRow";
 import { addManual, deleteTransaction, setStatus, updateTransaction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 type Param = string | string[] | undefined;
-type SP = Promise<{ month?: Param; status?: Param; type?: Param; q?: Param }>;
+type SP = Promise<{ month?: Param; status?: Param; type?: Param; q?: Param; view?: Param }>;
 
 export default async function Transactions({ searchParams }: { searchParams: SP }) {
   const raw = await searchParams;
   // ?q=a&q=b 처럼 배열로 오거나 형식이 틀린 값은 무시
   const one = (v: unknown) => (typeof v === "string" ? v : undefined);
-  const sp = { month: one(raw.month), status: one(raw.status), type: one(raw.type), q: one(raw.q) };
+  const sp = { month: one(raw.month), status: one(raw.status), type: one(raw.type), q: one(raw.q), view: one(raw.view) };
   const now = new Date();
   const base = sp.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month) ? new Date(`${sp.month}-15T00:00:00+09:00`) : now;
   const from = kstMonthStart(base);
@@ -41,6 +42,30 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
   const income = active.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
   const expense = active.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
   const today = new Date(now.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
+
+  // 확인할 결제는 기본으로 스와이프 카드로 정리 (목록 보기도 가능)
+  if (reviewMode && sp.view !== "list") {
+    const items: ReviewItem[] = txs.map((t) => ({
+      id: t.id,
+      type: t.type,
+      amount: t.amount,
+      merchant: t.merchant,
+      category: t.category,
+      issuer: t.issuer,
+      member: t.member?.name ?? null,
+      when: `${dayLabel(t.occurredAt)} ${fmtKst(t.occurredAt).split(" ")[1]}`,
+      raw: t.raws[0] ? `${t.raws[0].title}\n${t.raws[0].text}`.trim() : null,
+    }));
+    return (
+      <main className="space-y-5">
+        <header className="flex items-center justify-between">
+          <h1 className="text-[22px] font-bold">확인할 결제</h1>
+          <Link href="/transactions" className="btn-ghost">전체 내역</Link>
+        </header>
+        <ReviewDeck items={items} expenseCategories={EXPENSE_CATEGORIES} incomeCategories={INCOME_CATEGORIES} />
+      </main>
+    );
+  }
 
   return (
     <main className="space-y-5">

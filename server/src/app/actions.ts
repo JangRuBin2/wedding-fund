@@ -25,26 +25,46 @@ export async function updateTransaction(form: FormData) {
     data: { category, merchant, status: category && nextStatus ? statusForCategory(category, nextStatus) : nextStatus },
   });
 
-  if (learn && category) {
-    const key = normalizeMerchant(tx.merchant);
-    await prisma.merchantRule.upsert({
-      where: { merchant: key },
-      create: { merchant: key, category, source: "USER" },
-      update: { category, source: "USER" },
-    });
-    const same = await prisma.transaction.findMany({ where: { type: tx.type }, select: { id: true, merchant: true } });
-    const ids = same.filter((t) => normalizeMerchant(t.merchant) === key).map((t) => t.id);
-    if (category !== SAVINGS_CATEGORY) {
-      // 전에 '저축'으로 학습돼서 집계 제외됐던 건은 다시 집계에 포함
-      await prisma.transaction.updateMany({
-        where: { id: { in: ids }, category: SAVINGS_CATEGORY, status: "IGNORED" },
-        data: { status: "CONFIRMED" },
-      });
-    }
+  if (learn && category) await learnCategory(tx, category);
+  refresh();
+}
+
+/** 같은 가맹점 규칙 저장 + 과거 건까지 일괄 적용 */
+async function learnCategory(tx: { type: string; merchant: string }, category: string) {
+  // 가맹점을 못 읽은 건끼리 묶여서 전부 같은 카테고리로 바뀌지 않게
+  if (["알 수 없음", "입금", "수입", "현금 지출"].includes(tx.merchant.trim())) return;
+  const key = normalizeMerchant(tx.merchant);
+  await prisma.merchantRule.upsert({
+    where: { merchant: key },
+    create: { merchant: key, category, source: "USER" },
+    update: { category, source: "USER" },
+  });
+  const same = await prisma.transaction.findMany({ where: { type: tx.type }, select: { id: true, merchant: true } });
+  const ids = same.filter((t) => normalizeMerchant(t.merchant) === key).map((t) => t.id);
+  if (category !== SAVINGS_CATEGORY) {
+    // 전에 '저축'으로 학습돼서 집계 제외됐던 건은 다시 집계에 포함
     await prisma.transaction.updateMany({
-      where: { id: { in: ids } },
-      data: category === SAVINGS_CATEGORY ? { category, status: "IGNORED" } : { category },
+      where: { id: { in: ids }, category: SAVINGS_CATEGORY, status: "IGNORED" },
+      data: { status: "CONFIRMED" },
     });
+  }
+  await prisma.transaction.updateMany({
+    where: { id: { in: ids } },
+    data: category === SAVINGS_CATEGORY ? { category, status: "IGNORED" } : { category },
+  });
+}
+
+/** 확인할 결제 스와이프: 오른쪽 = 저장(확정), 왼쪽 = 삭제. 카테고리를 바꿨으면 같은 가맹점에도 학습 */
+export async function reviewDecision(id: string, decision: "keep" | "delete", category?: string) {
+  const tx = await prisma.transaction.findUnique({ where: { id } });
+  if (!tx) return;
+  if (decision === "delete") {
+    await prisma.rawNotification.updateMany({ where: { transactionId: id }, data: { transactionId: null } });
+    await prisma.transaction.delete({ where: { id } });
+  } else {
+    const next = category ?? tx.category;
+    await prisma.transaction.update({ where: { id }, data: { category: next, status: statusForCategory(next, "CONFIRMED") } });
+    if (category && category !== tx.category) await learnCategory(tx, category);
   }
   refresh();
 }
