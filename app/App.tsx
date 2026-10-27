@@ -127,7 +127,7 @@ export default function App() {
         </View>
         <Text style={[s.heroBody, { color: c.coverSub }]}>{state.body}</Text>
         {!granted && (
-          <Btn c={c} onPress={PaymentListener.openPermissionSettings} onCover>
+          <Btn c={c} onPress={() => PaymentListener.openPermissionSettings()} onCover>
             설정에서 &apos;결혼자금&apos; 허용하기
           </Btn>
         )}
@@ -150,7 +150,7 @@ export default function App() {
             갤럭시는 안 쓰는 앱을 재워서 알림 수집이 며칠 뒤 끊겨. 앱 정보 → 배터리 → &apos;제한 없음&apos;, 그리고 설정 → 배터리 → 백그라운드 사용 한도에서
             &apos;사용하지 않는 앱&apos;·&apos;딥 슬립&apos; 목록에서 빼줘
           </Text>
-          <Btn c={c} outline onPress={PaymentListener.openBatterySettings}>
+          <Btn c={c} outline onPress={() => PaymentListener.openBatterySettings()}>
             배터리 설정 열기
           </Btn>
         </Card>
