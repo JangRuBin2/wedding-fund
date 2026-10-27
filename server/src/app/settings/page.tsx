@@ -52,7 +52,7 @@ export default async function Settings() {
             <input name="bigSpendThreshold" inputMode="numeric" defaultValue={goal?.bigSpendThreshold ?? 50000} className="input num" />
           </label>
           <p className="col-span-2 text-[12px] leading-relaxed text-sub">
-            모은 돈은 이미 모아둔 돈에 시작일 이후 수입에서 지출을 뺀 만큼 더한 값. 적금 납입이나 내 계좌 간 이체는 내역에서 집계 제외해줘
+            모은 돈은 이미 모아둔 돈에 시작일 이후 (수입 − 지출)을 더해서 계산해요. 적금 납입이나 내 계좌 간 이체는 내역에서 집계 제외해 주세요
           </p>
           <button className="btn col-span-2">목표 저장</button>
         </form>
@@ -68,20 +68,20 @@ export default async function Settings() {
             </div>
             <div className="flex items-center justify-between gap-3 py-3">
               <dt className="text-sub">토큰</dt>
-              <dd className="text-right">서버 .env의 <code className="rounded bg-paper px-1.5 py-0.5 text-[13px]">INGEST_TOKEN</code></dd>
+              <dd className="text-right">서버 환경변수 <code className="rounded bg-paper px-1.5 py-0.5 text-[13px]">INGEST_TOKEN</code></dd>
             </div>
             <div className="flex items-center justify-between gap-3 py-3">
               <dt className="text-sub">연결된 사람</dt>
-              <dd className="font-semibold">{members.length ? members.map((m) => m.name).join(", ") : "아직 없음"}</dd>
+              <dd className="font-semibold">{members.length ? members.map((m) => m.name).join(", ") : "아직 없어요"}</dd>
             </div>
           </dl>
         </div>
-        <p className="mt-2 px-1 text-[12px] text-sub">둘이 같이 쓰려면 각자 폰에 앱을 깔고 이름만 다르게 넣으면 돼</p>
+        <p className="mt-2 px-1 text-[12px] text-sub">둘이 함께 쓰려면 각자 폰에 앱을 설치하고 이름만 다르게 입력해 주세요</p>
       </section>
 
       <section>
         <h2 className="section-title">최근 받은 알림</h2>
-        <p className="mb-2 px-1 text-[12px] leading-relaxed text-sub">결제 알림인데 SKIPPED면 파서가 못 잡은 거. 원문을 scripts/test-parser.ts에 케이스로 추가하면 돼</p>
+        <p className="mb-2 px-1 text-[12px] leading-relaxed text-sub">결제 알림인데 SKIPPED로 표시됐다면 파서가 인식하지 못한 거예요. 원문을 scripts/test-parser.ts에 케이스로 추가해 주세요</p>
         <ul className="card space-y-2 !p-2">
           {raws.map((r) => (
             <li key={r.id} className="rounded-lg bg-paper p-2.5 text-xs">
@@ -92,7 +92,7 @@ export default async function Settings() {
               <p className="whitespace-pre-wrap">{r.title}{"\n"}{r.text}</p>
             </li>
           ))}
-          {raws.length === 0 && <li className="py-6 text-center text-sm text-sub">폰 앱을 연결하면 받은 알림 원문이 여기 보여</li>}
+          {raws.length === 0 && <li className="py-6 text-center text-sm text-sub">폰 앱을 연결하면 받은 알림 원문이 여기에 표시돼요</li>}
         </ul>
       </section>
 
@@ -111,7 +111,7 @@ export default async function Settings() {
               </form>
             </li>
           ))}
-          {rules.length === 0 && <li className="py-6 text-center text-sm text-sub">내역에서 카테고리를 고치면 여기 쌓여</li>}
+          {rules.length === 0 && <li className="py-6 text-center text-sm text-sub">내역에서 카테고리를 고치면 여기에 쌓여요</li>}
         </ul>
       </section>
     </main>

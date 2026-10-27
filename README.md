@@ -56,7 +56,7 @@ Vercel 말고 홈서버에 올려도 됨: Postgres 하나 띄우고 `npm run bui
 41 8 * * 1  curl -s -H "Authorization: Bearer $CRON_SECRET" https://money.내도메인/api/cron/weekly-feedback
 ```
 
-`GEMINI_API_KEY` 있으면 Gemini가 직설 피드백 + 모르는 가맹점 자동 분류. 없으면 규칙 기반으로 동작.
+`GEMINI_API_KEY` 있으면 Gemini가 주간 피드백 + 모르는 가맹점 자동 분류. 없으면 규칙 기반으로 동작.
 키는 [Google AI Studio](https://aistudio.google.com/apikey)에서 카드 없이 무료 발급(프리티어). 한도(429)에 걸리면 그 호출만 규칙 기반으로 폴백하고, 분류 실패한 가맹점은 다음 결제 때 다시 시도함.
 프리티어는 입력·출력이 Google 모델 개선에 쓰일 수 있음 (가맹점명·금액 통계가 넘어감).
 

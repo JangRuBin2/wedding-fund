@@ -21,7 +21,7 @@ const tooltipProps = {
 /** 한 줄 100% 막대 + 항목별 행. 도넛보다 금액 비교가 빠름 */
 export function CategoryBreakdown({ data, limit = 7 }: { data: { category: string; amount: number }[]; limit?: number }) {
   const total = data.reduce((s, d) => s + d.amount, 0);
-  if (!total) return <p className="py-8 text-center text-sm text-sub">이번 달 지출이 아직 없어</p>;
+  if (!total) return <p className="py-8 text-center text-sm text-sub">이번 달 지출이 아직 없어요</p>;
   const shown = data.slice(0, limit);
   const rest = data.slice(limit).reduce((s, d) => s + d.amount, 0);
   const rows = rest ? [...shown, { category: "그 외", amount: rest }] : shown;

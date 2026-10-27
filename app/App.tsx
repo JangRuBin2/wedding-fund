@@ -18,11 +18,11 @@ import { PaymentListener, type ListenerSettings, type LogEntry } from "./modules
 
 /** 서버 응답/전송 결과 코드를 사람 말로 */
 function describe(result: string): { text: string; tone: "ok" | "warn" | "muted" } {
-  if (result === "PARSED") return { text: "기록됨", tone: "ok" };
-  if (result === "CANCEL_MATCHED") return { text: "취소 반영", tone: "ok" };
-  if (result === "DUPLICATE" || result === "ALREADY_SEEN") return { text: "이미 받은 결제", tone: "muted" };
-  if (result === "SKIPPED") return { text: "결제 알림 아님", tone: "muted" };
-  if (result.startsWith("QUEUED")) return { text: "서버 연결 안 돼서 대기 중", tone: "warn" };
+  if (result === "PARSED") return { text: "기록했어요", tone: "ok" };
+  if (result === "CANCEL_MATCHED") return { text: "취소를 반영했어요", tone: "ok" };
+  if (result === "DUPLICATE" || result === "ALREADY_SEEN") return { text: "이미 받은 결제예요", tone: "muted" };
+  if (result === "SKIPPED") return { text: "결제 알림이 아니에요", tone: "muted" };
+  if (result.startsWith("QUEUED")) return { text: "연결되면 보낼게요", tone: "warn" };
   return { text: result, tone: "muted" };
 }
 
@@ -89,28 +89,28 @@ export default function App() {
   const onFlush = async () => {
     try {
       const n = await PaymentListener.flushQueue();
-      setMsg(n ? `밀린 ${n}건 보냄` : "밀린 결제 없음");
+      setMsg(n ? `밀린 결제 ${n}건을 보냈어요` : "보낼 결제가 없어요");
     } catch (e) {
-      setMsg(`보내기 실패: ${(e as Error).message}`);
+      setMsg(`보내지 못했어요. ${(e as Error).message}`);
     }
     refresh();
   };
 
-  const good = (t: string) => t.includes("OK") || t.includes("완료") || t.includes("보냄");
+  const good = (t: string) => t.startsWith("연결됐어요") || t.includes("보냈어요");
 
   // 지금 제일 먼저 해야 할 것 하나
   const lastSent = log.find((l) => !l.result.startsWith("QUEUED"));
   const state: { title: string; body: string; tone: "ok" | "warn" | "bad" } = !granted
-    ? { title: "알림 접근이 꺼져 있어", body: "이걸 켜야 카드·은행 결제 알림을 읽을 수 있어", tone: "bad" }
+    ? { title: "알림 접근 권한이 필요해요", body: "권한을 켜 주시면 카드·은행 결제 알림을 자동으로 기록해 드릴게요", tone: "bad" }
     : !configured
-      ? { title: "서버 연결만 남았어", body: "아래에 서버 주소랑 토큰을 넣어줘", tone: "warn" }
+      ? { title: "서버 연결만 남았어요", body: "아래에 서버 주소와 토큰을 입력해 주세요", tone: "warn" }
       : queued > 0
-        ? { title: `결제 ${queued}건이 대기 중`, body: "서버에 연결이 안 돼서 폰에 모아뒀어. 연결되면 자동으로 보내", tone: "warn" }
+        ? { title: `결제 ${queued}건을 보관하고 있어요`, body: "지금은 서버에 연결되지 않아 폰에 모아뒀어요. 연결되면 자동으로 보내 드릴게요", tone: "warn" }
         : !battery
-          ? { title: "수집 중, 근데 끊길 수 있어", body: "배터리 최적화에서 빼야 며칠 뒤에도 안 놓쳐", tone: "warn" }
+          ? { title: "수집 중이지만 끊길 수 있어요", body: "배터리 최적화에서 제외해 주시면 결제 알림을 놓치지 않아요", tone: "warn" }
           : {
-              title: "결제 알림 수집 중",
-              body: lastSent ? `마지막 전송 ${ago(lastSent.at)}` : "카드 한 번 긁으면 여기 기록이 떠",
+              title: "결제 알림을 기록하고 있어요",
+              body: lastSent ? `마지막 전송 ${ago(lastSent.at)}` : "카드로 결제하면 여기에 기록이 표시돼요",
               tone: "ok",
             };
   const toneColor = state.tone === "ok" ? c.save : state.tone === "warn" ? c.warn : c.spend;
@@ -128,7 +128,7 @@ export default function App() {
         <Text style={[s.heroBody, { color: c.coverSub }]}>{state.body}</Text>
         {!granted && (
           <Btn c={c} onPress={() => PaymentListener.openPermissionSettings()} onCover>
-            설정에서 &apos;결혼자금&apos; 허용하기
+            알림 접근 허용하러 가기
           </Btn>
         )}
         {granted && configured && queued > 0 && (
@@ -145,10 +145,10 @@ export default function App() {
 
       {granted && !battery && (
         <Card c={c}>
-          <Text style={[s.cardTitle, { color: c.ink }]}>배터리 최적화에서 빼기</Text>
+          <Text style={[s.cardTitle, { color: c.ink }]}>배터리 최적화 제외하기</Text>
           <Text style={[s.hint, { color: c.sub }]}>
-            갤럭시는 안 쓰는 앱을 재워서 알림 수집이 며칠 뒤 끊겨. 앱 정보 → 배터리 → &apos;제한 없음&apos;, 그리고 설정 → 배터리 → 백그라운드 사용 한도에서
-            &apos;사용하지 않는 앱&apos;·&apos;딥 슬립&apos; 목록에서 빼줘
+            갤럭시는 오래 쓰지 않은 앱을 잠재워서 며칠 뒤 수집이 끊길 수 있어요. 앱 정보 → 배터리 → &apos;제한 없음&apos;으로 바꾸고, 설정 → 배터리 → 백그라운드 사용 한도의
+            &apos;사용하지 않는 앱&apos;·&apos;딥 슬립&apos; 목록에서도 빼 주세요
           </Text>
           <Btn c={c} outline onPress={() => PaymentListener.openBatterySettings()}>
             배터리 설정 열기
@@ -172,17 +172,17 @@ export default function App() {
         {editing && (
           <View style={{ gap: 2, marginTop: 6 }}>
             <Field c={c} label="서버 주소" value={settings.serverUrl} onChangeText={(v) => set({ serverUrl: v })} placeholder="https://money.example.com" keyboardType="url" />
-            <Field c={c} label="토큰" hint="서버 .env의 INGEST_TOKEN 값" value={settings.token} onChangeText={(v) => set({ token: v })} secureTextEntry />
-            <Field c={c} label="내 이름" hint="둘이 같이 쓰면 각자 다르게" value={settings.memberName} onChangeText={(v) => set({ memberName: v })} placeholder="민준" />
+            <Field c={c} label="토큰" hint="서버에 설정한 INGEST_TOKEN 값을 입력해 주세요" value={settings.token} onChangeText={(v) => set({ token: v })} secureTextEntry />
+            <Field c={c} label="내 이름" hint="둘이 함께 쓴다면 서로 다른 이름을 입력해 주세요" value={settings.memberName} onChangeText={(v) => set({ memberName: v })} placeholder="민준" />
             <View style={[s.row, { paddingVertical: 6 }]}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={{ color: c.ink, fontSize: 15 }}>카톡 알림톡도 받기</Text>
-                <Text style={[s.hint, { color: c.sub }]}>카드사·은행 채널만. 친구 대화는 안 보내</Text>
+                <Text style={{ color: c.ink, fontSize: 15 }}>카카오톡 알림톡도 받기</Text>
+                <Text style={[s.hint, { color: c.sub }]}>카드사·은행 채널만 받아요. 친구와의 대화는 보내지 않아요</Text>
               </View>
               <Switch value={settings.includeKakao} onValueChange={(v) => set({ includeKakao: v })} />
             </View>
             <Btn c={c} onPress={onSave} disabled={busy || !settings.serverUrl || !settings.token}>
-              {busy ? "연결 확인 중…" : "저장하고 연결 확인"}
+              {busy ? "연결을 확인하고 있어요…" : "저장하고 연결 확인하기"}
             </Btn>
           </View>
         )}
@@ -194,7 +194,7 @@ export default function App() {
         <Card c={c}>
           {log.length === 0 ? (
             <Text style={[s.hint, { color: c.sub, textAlign: "center", paddingVertical: 12 }]}>
-              아직 없어. 카드 한 번 긁으면 몇 초 안에 여기 떠
+              아직 보낸 결제가 없어요. 카드로 결제하면 몇 초 안에 여기에 표시돼요
             </Text>
           ) : (
             log.slice(0, 15).map((l, i) => {
@@ -225,7 +225,7 @@ export default function App() {
       </View>
 
       <Text style={[s.hint, { color: c.sub, textAlign: "center", paddingHorizontal: 12 }]}>
-        금액과 결제·입금 단어가 같이 있는 알림만 서버로 가. 나머지 알림은 폰 밖으로 안 나가
+        금액과 결제·입금 같은 단어가 함께 있는 알림만 서버로 보내요. 다른 알림은 폰 밖으로 나가지 않아요
       </Text>
     </ScrollView>
   );

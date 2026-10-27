@@ -14,7 +14,7 @@ export function middleware(req: NextRequest) {
     const pass = decoded.slice(decoded.indexOf(":") + 1);
     if (pass === password) return NextResponse.next();
   }
-  return new NextResponse("인증 필요", {
+  return new NextResponse("로그인이 필요해요", {
     status: 401,
     headers: { "WWW-Authenticate": 'Basic realm="wedding-fund", charset="UTF-8"' },
   });

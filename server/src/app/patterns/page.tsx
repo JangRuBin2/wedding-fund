@@ -50,13 +50,13 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
       <Link href="/feedback" className="flex items-center justify-between rounded-2xl border-l-4 border-save bg-card px-4 py-3.5">
         <span>
           <span className="block text-[15px] font-semibold">주간 피드백</span>
-          <span className="block text-[12px] text-sub">지난주 소비를 AI가 짚어줌</span>
+          <span className="block text-[12px] text-sub">지난주 소비를 AI가 짚어 드려요</span>
         </span>
         <span className="text-[13px] font-semibold text-save">보기</span>
       </Link>
 
       <section>
-        <h2 className="section-title">언제 쓰나<small>진할수록 많이 씀</small></h2>
+        <h2 className="section-title">언제 많이 쓸까요<small>진할수록 많이 썼어요</small></h2>
         <div className="card">
           <div className="grid grid-cols-[20px_repeat(24,minmax(0,1fr))] gap-[2px] text-[9px] text-sub">
             <span />
@@ -98,13 +98,13 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
             {manwon(wk.weekdayPerDay)} <span className="text-faint">/</span> {manwon(wk.weekendPerDay)}
           </p>
           <p className="mt-1 text-[12px] text-sub">
-            주말이 평일의 {(wk.weekendPerDay / Math.max(1, wk.weekdayPerDay)).toFixed(1)}배
+            주말이 평일의 {(wk.weekendPerDay / Math.max(1, wk.weekdayPerDay)).toFixed(1)}배를 써요
           </p>
         </div>
       </section>
 
       <section>
-        <h2 className="section-title">평소보다 더 쓰는 것<small>지난 3개월 같은 날짜까지와 비교</small></h2>
+        <h2 className="section-title">평소보다 더 쓰고 있어요<small>지난 3개월 같은 날짜까지와 비교</small></h2>
         <div className="card !py-1">
         <ul className="ledger">
           {trend.filter((t) => Math.abs(t.diff) >= 5000).slice(0, 8).map((t) => (
@@ -118,7 +118,7 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
               </span>
             </li>
           ))}
-          {trend.length === 0 && <li className="py-6 text-center text-sm text-sub">한 달 넘게 쌓이면 비교해줄게</li>}
+          {trend.length === 0 && <li className="py-6 text-center text-sm text-sub">내역이 한 달 넘게 쌓이면 비교해 드릴게요</li>}
         </ul>
         </div>
       </section>
@@ -136,10 +136,10 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
               <p className="num font-bold">{r.amount.toLocaleString("ko-KR")}원</p>
             </li>
           ))}
-          {recurring.length === 0 && <li className="py-6 text-center text-sm text-sub">두 달 넘게 쌓이면 자동으로 찾아줌</li>}
+          {recurring.length === 0 && <li className="py-6 text-center text-sm text-sub">내역이 두 달 넘게 쌓이면 자동으로 찾아 드릴게요</li>}
         </ul>
         </div>
-        {recurring.length > 0 && <p className="mt-2 px-1 text-[12px] text-sub">안 쓰는 구독이 있으면 여기서부터 끊자</p>}
+        {recurring.length > 0 && <p className="mt-2 px-1 text-[12px] text-sub">안 쓰는 구독이 있다면 여기서부터 정리해 보세요</p>}
       </section>
 
       <section>

@@ -77,7 +77,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
       <details className="card group">
         <summary className="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
           <span>직접 입력</span>
-          <span className="text-[13px] font-medium text-sub group-open:hidden">현금, 월급처럼 알림 안 오는 것</span>
+          <span className="text-[13px] font-medium text-sub group-open:hidden">현금이나 월급처럼 알림이 오지 않는 내역</span>
         </summary>
         <form action={addManual} className="mt-4 grid grid-cols-2 gap-2">
           <select name="type" className="input">
@@ -98,7 +98,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
       </details>
 
       <section className="card !py-1">
-        {txs.length === 0 && <p className="py-10 text-center text-sm text-sub">{reviewMode ? "확인할 결제 없음" : sp.q ? `"${sp.q}" 검색 결과 없음` : "이 달은 내역이 없어"}</p>}
+        {txs.length === 0 && <p className="py-10 text-center text-sm text-sub">{reviewMode ? "확인할 결제가 없어요" : sp.q ? `"${sp.q}" 검색 결과가 없어요` : "이 달은 내역이 없어요"}</p>}
         <ul>
           {txs.map((t, i) => {
             const day = dayLabel(t.occurredAt);
@@ -128,7 +128,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                       {![...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES].includes(t.category as never) && <option>{t.category}</option>}
                     </select>
                     <label className="col-span-2 flex items-center gap-2 text-[13px] text-sub">
-                      <input type="checkbox" name="learn" defaultChecked /> 다음부터 이 가맹점은 이 카테고리로 분류
+                      <input type="checkbox" name="learn" defaultChecked /> 다음부터 이 가맹점은 이 카테고리로 분류하기
                     </label>
                     <button className="btn col-span-2">저장</button>
                   </form>
@@ -147,7 +147,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                     </form>
                   </div>
                   <p className="text-[11px] text-sub">
-                    적금·청약 이체는 카테고리를 '저축'으로 바꾸면 자동으로 집계 제외돼. 계약금·잔금은 '결혼준비'로
+                    적금·청약 이체는 카테고리를 '저축'으로 바꾸면 집계에서 자동으로 빠져요. 계약금·잔금은 '결혼준비'로 바꿔 주세요
                   </p>
                 </div>
               </details>

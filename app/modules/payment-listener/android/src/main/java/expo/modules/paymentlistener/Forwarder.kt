@@ -77,12 +77,12 @@ object Forwarder {
 
   /** 인증만 확인 (빈 배열 전송 → 서버는 [] 반환) */
   fun testBlocking(store: Store): String {
-    if (!store.configured) return "서버 주소랑 토큰부터 넣어"
+    if (!store.configured) return "서버 주소와 토큰을 먼저 입력해 주세요"
     return try {
       val body = post(store, "[]")
-      if (body.trim().startsWith("[")) "연결 OK" else "응답이 이상함: ${body.take(60)}"
+      if (body.trim().startsWith("[")) "연결됐어요" else "서버 응답을 확인할 수 없어요: ${body.take(60)}"
     } catch (e: Exception) {
-      "실패: ${e.message ?: e.javaClass.simpleName}"
+      "연결하지 못했어요. ${e.message ?: e.javaClass.simpleName}"
     }
   }
 
@@ -97,8 +97,8 @@ object Forwarder {
       conn.setRequestProperty("Authorization", "Bearer ${store.token}")
       conn.outputStream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
       val code = conn.responseCode
-      if (code == 401) throw IllegalStateException("토큰 틀림")
-      if (code !in 200..299) throw IllegalStateException("HTTP $code")
+      if (code == 401) throw IllegalStateException("토큰이 맞지 않아요")
+      if (code !in 200..299) throw IllegalStateException("서버 오류 (HTTP $code)")
       return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
     } finally {
       conn.disconnect()
@@ -115,7 +115,7 @@ object Forwarder {
     }
     val n = NotificationCompat.Builder(context, NUDGE_CHANNEL)
       .setSmallIcon(context.applicationInfo.icon)
-      .setContentTitle("잠깐")
+      .setContentTitle("잠깐만요")
       .setContentText(body)
       .setStyle(NotificationCompat.BigTextStyle().bigText(body))
       .setAutoCancel(true)

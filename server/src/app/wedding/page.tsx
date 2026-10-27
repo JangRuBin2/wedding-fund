@@ -31,16 +31,16 @@ export default async function WeddingPage() {
       {w.items.length === 0 ? (
         <section className="card space-y-4">
           <div>
-            <p className="text-[17px] font-bold">예산표부터 만들자</p>
+            <p className="text-[17px] font-bold">예산표부터 만들어 볼까요?</p>
             <p className="mt-1 text-[14px] leading-relaxed text-sub">
-              항목별로 예산이랑 잔금 날짜를 적어두면, 언제 얼마가 나가야 하는지 홈에서 미리 보여줄게. 다 정하면 목표 금액도
-              예산 합계로 맞출 수 있어.
+              항목별로 예산과 잔금 날짜를 적어 두시면, 언제 얼마가 나가는지 홈에서 미리 알려 드릴게요. 다 정하시면 목표 금액도
+              예산 합계로 맞출 수 있어요.
             </p>
           </div>
           <form action={addWeddingTemplate}>
-            <SubmitButton pendingText="만드는 중…">자주 쓰는 항목 10개로 시작</SubmitButton>
+            <SubmitButton pendingText="만드는 중…">자주 쓰는 항목 10개로 시작하기</SubmitButton>
           </form>
-          <p className="text-[12px] text-sub">예식장, 스드메, 예물, 신혼여행, 가전 같은 항목이 예산 없이 들어가. 필요 없는 건 지우면 돼</p>
+          <p className="text-[12px] text-sub">예식장, 스드메, 예물, 신혼여행, 가전 같은 항목이 예산 없이 추가돼요. 필요 없는 항목은 지워 주세요</p>
         </section>
       ) : (
         <>
@@ -64,22 +64,22 @@ export default async function WeddingPage() {
             </div>
             {w.undecided > 0 && (
               <p className="mt-3 rounded-lg bg-paper px-3 py-2 text-[13px] text-sub">
-                예산 안 정한 항목 {w.undecided}개. 대략이라도 넣어야 합계가 맞아
+                예산을 정하지 않은 항목이 {w.undecided}개 있어요. 대략이라도 입력하시면 합계가 정확해져요
               </p>
             )}
             {status && w.budget > 0 && Math.abs(gap) >= 10_000 && (
               <form action={alignGoalToBudget} className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
                 <p className="text-[13px] leading-snug text-sub">
                   목표 금액 <span className="num">{manwon(status.goal.targetAmount)}원</span>이 예산 합계보다{" "}
-                  <b className={gap > 0 ? "text-ink" : "text-spend"}>{manwon(Math.abs(gap))}원 {gap > 0 ? "많음" : "적음"}</b>
+                  <b className={gap > 0 ? "text-ink" : "text-spend"}>{manwon(Math.abs(gap))}원 {gap > 0 ? "많아요" : "적어요"}</b>
                 </p>
-                <SubmitButton pendingText="맞추는 중…" className="shrink-0 whitespace-nowrap">목표 맞추기</SubmitButton>
+                <SubmitButton pendingText="맞추는 중…" className="shrink-0 whitespace-nowrap">목표를 예산에 맞추기</SubmitButton>
               </form>
             )}
             {status && status.weddingSpent > 0 && (
               <p className="mt-3 text-[12px] text-sub">
-                내역에서 결혼준비로 분류된 결제 <span className="num">{manwon(status.weddingSpent)}원</span>. 위 &apos;낸 돈&apos;이랑 크게
-                다르면 항목별 낸 돈을 고쳐줘
+                내역에서 결혼준비로 분류된 결제 <span className="num">{manwon(status.weddingSpent)}원</span>이에요. 위의 &apos;낸 돈&apos;과 크게
+                다르다면 항목별 낸 돈을 고쳐 주세요
               </p>
             )}
           </section>
@@ -140,13 +140,13 @@ export default async function WeddingPage() {
                             </span>
                             <span className="shrink-0 text-right">
                               {done ? (
-                                <span className="text-[13px] font-bold text-save">다 냄</span>
+                                <span className="text-[13px] font-bold text-save">다 냈어요</span>
                               ) : i.budget === 0 ? (
                                 <span className="text-[13px] text-faint">미정</span>
                               ) : (
                                 <>
                                   <span className="num block text-[15px] font-bold">{manwon(i.budget)}원</span>
-                                  {i.paid > 0 && <span className="num block text-[12px] text-sub">{manwon(i.paid)}원 냄</span>}
+                                  {i.paid > 0 && <span className="num block text-[12px] text-sub">{manwon(i.paid)}원 냈어요</span>}
                                 </>
                               )}
                             </span>
@@ -187,7 +187,7 @@ export default async function WeddingPage() {
                             <div className="flex gap-2">
                               {!done && i.budget > 0 && (
                                 <form action={settleWeddingItem.bind(null, i.id)}>
-                                  <button className="btn-ghost">남은 돈 다 냄</button>
+                                  <button className="btn-ghost">남은 돈 다 냈어요</button>
                                 </form>
                               )}
                               <form action={deleteWeddingItem.bind(null, i.id)}>
@@ -228,8 +228,8 @@ export default async function WeddingPage() {
       </section>
 
       <p className="px-1 text-[12px] leading-relaxed text-sub">
-        결혼준비 결제는 홈의 생활비, 하루 권장액, 소비 패턴, 큰 지출 알림에서 빠지고 목표 진행에는 &apos;이미 쓴 결혼자금&apos;으로 들어가.
-        내역에서 카테고리를 결혼준비로 바꾸면 돼.{" "}
+        결혼준비 결제는 홈의 생활비, 하루 권장액, 소비 패턴, 큰 지출 알림에서 빠지고, 목표 진행에는 &apos;이미 쓴 결혼자금&apos;으로 들어가요.
+        내역에서 카테고리를 결혼준비로 바꿔 주세요.{" "}
         <Link href="/transactions" className="font-semibold text-save underline-offset-2 hover:underline">
           내역 보기
         </Link>

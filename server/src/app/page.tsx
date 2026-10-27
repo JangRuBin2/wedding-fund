@@ -39,15 +39,15 @@ async function monthTrack(status: NonNullable<GoalStatus>, now: Date): Promise<C
 }
 
 function paceMessage(s: NonNullable<GoalStatus>) {
-  if (s.remaining === 0) return { ok: true, text: "목표 금액 다 모았어" };
+  if (s.remaining === 0) return { ok: true, text: "목표 금액을 다 모았어요" };
   if (!s.projectedDate || s.projectedDate.getTime() - s.goal.targetDate.getTime() > 5 * 365 * DAY) {
-    return { ok: false, text: `최근 페이스로는 목표일까지 못 모아. 매달 ${manwon(s.requiredPerMonth)}원은 남겨야 함` };
+    return { ok: false, text: `지금 페이스로는 목표일까지 모으기 어려워요. 매달 ${manwon(s.requiredPerMonth)}원씩 모아 주세요` };
   }
   const p = kstParts(s.projectedDate);
   const gapMonths = Math.round((s.goal.targetDate.getTime() - s.projectedDate.getTime()) / (30.44 * DAY));
   const when = `${p.year}년 ${p.month + 1}월`;
-  if (s.onTrack) return { ok: true, text: `이 페이스면 ${when}에 다 모음${gapMonths > 0 ? `, 목표보다 ${gapMonths}개월 빠름` : ""}` };
-  return { ok: false, text: `이 페이스면 ${when}에 다 모음, 목표보다 ${Math.max(1, -gapMonths)}개월 늦음` };
+  if (s.onTrack) return { ok: true, text: `이 페이스라면 ${when}에 다 모을 수 있어요${gapMonths > 0 ? `. 목표보다 ${gapMonths}개월 빨라요` : ""}` };
+  return { ok: false, text: `이 페이스라면 ${when}에 다 모을 수 있어요. 목표보다 ${Math.max(1, -gapMonths)}개월 늦어요` };
 }
 
 export default async function Home() {
@@ -104,7 +104,7 @@ export default async function Home() {
           href="/transactions?status=REVIEW"
           className="flex items-center justify-between rounded-xl bg-spend-soft px-4 py-3 text-sm font-semibold text-spend"
         >
-          <span>카테고리 확인이 필요한 결제 {reviewCount}건</span>
+          <span>카테고리를 확인해 주세요 · {reviewCount}건</span>
           <span className="text-xs">확인하기</span>
         </Link>
       )}
@@ -121,11 +121,11 @@ export default async function Home() {
           </p>
           <p className="mt-2 text-[14px] text-cover-sub">
             <span className="num">{manwon(status.goal.targetAmount)}원</span> 중{" "}
-            <b className="num text-cover-ink">{Math.floor(status.progress * 100)}%</b> 모음
+            <b className="num text-cover-ink">{Math.floor(status.progress * 100)}%</b> 모았어요
           </p>
           {status.weddingSpent > 0 && (
             <p className="num mt-1 text-[12px] text-cover-sub">
-              통장 {manwon(status.balance)}원 + 결혼준비에 이미 쓴 {manwon(status.weddingSpent)}원
+              통장 {manwon(status.balance)}원 + 결혼 준비에 쓴 {manwon(status.weddingSpent)}원
             </p>
           )}
 
@@ -170,8 +170,8 @@ export default async function Home() {
         </section>
       ) : (
         <Link href="/settings" className="block rounded-[20px] bg-cover p-6 text-cover-ink">
-          <p className="text-lg font-bold">목표부터 정하자</p>
-          <p className="mt-1 text-sm text-cover-sub">목표 금액이랑 날짜를 넣으면 매달 얼마 모아야 하는지 계산해줌</p>
+          <p className="text-lg font-bold">목표부터 정해 볼까요?</p>
+          <p className="mt-1 text-sm text-cover-sub">목표 금액과 날짜를 입력하시면 매달 얼마씩 모으면 되는지 계산해 드릴게요</p>
         </Link>
       )}
 
@@ -180,9 +180,9 @@ export default async function Home() {
           {variableLeft <= 0 ? (
             <>
               <p className="text-[14px] text-sub">이번 달 생활비</p>
-              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-variableLeft)}원 넘음</p>
+              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-variableLeft)}원 넘었어요</p>
               <p className="mt-1.5 text-[13px] leading-snug text-sub">
-                목표 저축 <span className="num">{manwon(status.requiredPerMonth)}원</span>을 지키려면 남은 {daysLeftInMonth}일은 꼭 필요한 데만 쓰자
+                목표 저축 <span className="num">{manwon(status.requiredPerMonth)}원</span>을 지키려면 남은 {daysLeftInMonth}일은 꼭 필요한 곳에만 써 주세요
               </p>
             </>
           ) : todayLeft > 0 ? (
@@ -196,35 +196,35 @@ export default async function Home() {
                 오늘 몫 <span className="num">{manwon(perDay)}원</span>
                 {spentToday > 0 ? (
                   <>
-                    {" "}중 <span className="num">{manwon(spentToday)}원</span> 씀
+                    {" "}중 <span className="num">{manwon(spentToday)}원</span>을 썼어요
                   </>
                 ) : null}
-                . 이번 달 남은 {daysLeftInMonth}일 동안 <span className="num">{manwon(variableLeft)}원</span>
+                . 남은 {daysLeftInMonth}일 동안 <span className="num">{manwon(variableLeft)}원</span>을 쓸 수 있어요
               </p>
             </>
           ) : (
             <>
               <p className="text-[14px] text-sub">
-                오늘 몫 <span className="num">{manwon(perDay)}원</span> 중 <span className="num">{manwon(spentToday)}원</span> 씀
+                오늘 몫 <span className="num">{manwon(perDay)}원</span> 중 <span className="num">{manwon(spentToday)}원</span>을 썼어요
               </p>
-              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-todayLeft)}원 넘음</p>
+              <p className="num mt-1 text-[26px] leading-tight font-extrabold text-spend">{manwon(-todayLeft)}원 넘었어요</p>
               <p className="mt-1.5 text-[13px] leading-snug text-sub">
                 {daysLeftInMonth > 1 ? (
                   <>
-                    내일부터는 하루 <b className="num text-ink">{manwon(tomorrowPerDay)}원</b>씩 쓰면 이번 달 목표 지킬 수 있어
+                    내일부터는 하루 <b className="num text-ink">{manwon(tomorrowPerDay)}원</b>씩 쓰시면 이번 달 목표를 지킬 수 있어요
                   </>
                 ) : (
-                  "오늘이 이번 달 마지막 날"
+                  "오늘이 이번 달 마지막 날이에요"
                 )}
               </p>
             </>
           )}
           {fixedTotal > 0 && (
             <p className="mt-3 border-t border-line pt-3 text-[12px] text-sub">
-              월세·구독 같은 고정비 <span className="num">{manwon(fixedTotal)}원</span>은 따로 뺐어
+              월세·구독 같은 고정비 <span className="num">{manwon(fixedTotal)}원</span>은 따로 계산했어요
               {fixedComing > 0 && (
                 <>
-                  , 이번 달 <span className="num">{manwon(fixedComing)}원</span> 더 나갈 예정
+                  . 이번 달 <span className="num">{manwon(fixedComing)}원</span>이 더 나갈 예정이에요
                 </>
               )}
             </p>
@@ -281,9 +281,9 @@ export default async function Home() {
                 <p className="mt-1.5 text-[12px] text-sub">
                   이번 달 목표 <span className="num">{manwon(status.requiredPerMonth)}원</span>
                   {status.monthNet >= status.requiredPerMonth
-                    ? " 채움"
-                    : `까지 ${manwon(status.requiredPerMonth - status.monthNet)}원 남음`}
-                  {status.monthIncome < status.expectedIncome && ", 월급 들어오기 전"}
+                    ? "을 채웠어요"
+                    : `까지 ${manwon(status.requiredPerMonth - status.monthNet)}원 남았어요`}
+                  {status.monthIncome < status.expectedIncome && " (월급 들어오기 전)"}
                 </p>
               </div>
             )}
@@ -302,10 +302,10 @@ export default async function Home() {
             <p className="mt-2 text-[13px] text-sub">
               {overDays ? (
                 <>
-                  이번 달 <b className="text-spend">{overDays}일</b>은 하루 몫을 넘김
+                  이번 달 <b className="text-spend">{overDays}일</b>은 하루 몫을 넘겼어요
                 </>
               ) : (
-                "아직 하루 몫 넘긴 날 없음"
+                "아직 하루 몫을 넘긴 날이 없어요"
               )}
             </p>
           )}
@@ -314,7 +314,7 @@ export default async function Home() {
 
       <section>
         <h2 className="section-title">
-          생활비 어디에 썼나
+          생활비를 어디에 썼을까요
           <small className="num">{manwon(livingSpent)}원</small>
         </h2>
         <div className="card">
@@ -367,7 +367,7 @@ export default async function Home() {
               ))}
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-sub">폰 앱을 연결하면 결제 알림이 여기 쌓여</p>
+            <p className="py-8 text-center text-sm text-sub">폰 앱을 연결하면 결제 내역이 여기에 쌓여요</p>
           )}
         </div>
       </section>

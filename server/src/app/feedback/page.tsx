@@ -20,13 +20,13 @@ export default async function FeedbackPage() {
       </header>
       {!hasKey && (
         <p className="rounded-xl bg-card p-3.5 text-[13px] leading-relaxed text-sub">
-          지금은 규칙 기반 요약만 나와. 서버 <code className="rounded bg-paper px-1">.env</code>에 <code className="rounded bg-paper px-1">GEMINI_API_KEY</code>를 넣으면 Gemini가 패턴을 보고 코멘트를 써줌
+          지금은 규칙 기반 요약만 보여 드려요. 서버 <code className="rounded bg-paper px-1">.env</code>에 <code className="rounded bg-paper px-1">GEMINI_API_KEY</code>를 넣으면 Gemini가 소비 패턴을 보고 코멘트를 써 드려요
         </p>
       )}
       {list.length === 0 && (
         <p className="card py-10 text-center text-sm leading-relaxed text-sub">
-          아직 피드백이 없어. 위 버튼으로 지금 만들거나,
-          <br />매주 월요일 아침 자동으로 만들어지게 크론을 걸어둬
+          아직 피드백이 없어요. 위 버튼으로 지금 바로 만들 수 있어요.
+          <br />매주 월요일 아침에는 자동으로 만들어 드릴게요
         </p>
       )}
       {list.map((f) => {

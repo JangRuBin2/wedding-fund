@@ -90,8 +90,8 @@ export async function buildNudge(amount: number, merchant: string): Promise<stri
   if (!s || amount < s.goal.bigSpendThreshold) return null;
   const won = amount.toLocaleString("ko-KR");
   if (s.dailyNet <= 0) {
-    return `${merchant} ${won}원 결제됨. 지금 페이스로는 ${s.goal.title} 목표 못 맞춤. 이번 달 남은 지출 다시 봐야 함`;
+    return `${merchant}에서 ${won}원 결제했어요. 지금 페이스로는 ${s.goal.title} 목표를 맞추기 어려워요. 이번 달 남은 지출을 한번 살펴봐 주세요`;
   }
   const delay = Math.max(1, Math.round(amount / s.dailyNet));
-  return `${merchant} ${won}원 → ${s.goal.title} 목표 약 ${delay}일 밀림`;
+  return `${merchant}에서 ${won}원 결제했어요. ${s.goal.title} 목표가 약 ${delay}일 늦어져요`;
 }
