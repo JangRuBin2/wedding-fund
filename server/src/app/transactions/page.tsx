@@ -27,7 +27,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
     where: {
       ...(reviewMode ? { status: "REVIEW" } : { occurredAt: { gte: from, lt: to } }),
       ...(sp.type === "INCOME" || sp.type === "EXPENSE" ? { type: sp.type } : {}),
-      ...(sp.q ? { merchant: { contains: sp.q } } : {}),
+      ...(sp.q ? { merchant: { contains: sp.q, mode: "insensitive" } } : {}),
     },
     orderBy: { occurredAt: "desc" },
     include: { member: true, raws: { take: 1, orderBy: { createdAt: "asc" } } },

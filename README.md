@@ -15,7 +15,7 @@
 ```
 
 ```
-server/   Next.js 15 + Prisma 7 + SQLite  (대시보드 + API + 파서 + 분석)
+server/   Next.js 15 + Prisma 7 + Postgres  (대시보드 + API + 파서 + 분석)
 app/      Expo SDK 58 + 로컬 네이티브 모듈 modules/payment-listener (Kotlin)
 ```
 
@@ -23,23 +23,39 @@ app/      Expo SDK 58 + 로컬 네이티브 모듈 modules/payment-listener (Kot
 
 ## 1. 서버
 
+### 배포: Vercel + Neon (무료)
+
+1. [vercel.com](https://vercel.com)에 GitHub로 로그인 → **Add New → Project** → 이 레포 Import
+2. **Root Directory를 `server`로** 지정 (Framework는 Next.js 자동 인식)
+3. Environment Variables에 추가 (값은 `openssl rand -hex 32` 등으로 길고 랜덤하게)
+   - `INGEST_TOKEN` — 폰 앱에 넣을 토큰
+   - `DASHBOARD_PASSWORD` — 대시보드 비밀번호 (브라우저 로그인 창, 아이디는 아무거나)
+   - `CRON_SECRET` — 주간 피드백 크론용
+   - `GEMINI_API_KEY` — (선택)
+4. 첫 배포는 DB가 없어서 실패해도 괜찮음. 프로젝트 → **Storage → Create Database → Neon (Postgres)** → 이 프로젝트에 연결
+   → `DATABASE_URL` / `DATABASE_URL_UNPOOLED`가 자동으로 들어감
+5. **Deployments → 최신 배포 ⋯ → Redeploy**. 빌드할 때 `prisma db push`가 테이블을 자동으로 만듦 (스키마가 바뀌어도 푸시하면 반영, 데이터가 지워지는 변경이면 빌드가 멈춰서 안전)
+6. 나온 주소 `https://xxx.vercel.app`를 폰 앱의 서버 주소에 넣으면 끝
+
+주간 피드백은 `server/vercel.json`의 Vercel Cron이 매주 월요일 아침(08:41 KST 근처, 무료 플랜은 그 시간대 안에서 아무 때나) 자동 호출. `CRON_SECRET`만 넣어두면 Vercel이 알아서 인증 헤더를 붙임.
+
+### 로컬 개발
+
 ```bash
 cd server
 npm install
-cp .env.example .env          # INGEST_TOKEN, DASHBOARD_PASSWORD, CRON_SECRET 채우기 (openssl rand -hex 32)
-npm run db:push               # DB 테이블 생성 (스키마 바뀌면 다시 실행) (npm install 때 클라이언트는 자동 생성)
-npm run db:seed               # (선택) 4개월치 데모 데이터. 실사용 전엔 rm data.db && npm run db:push
+cp .env.example .env          # DATABASE_URL에 Neon 주소(개발용 브랜치 추천) 또는 로컬 Postgres
+npm run db:push               # DB 테이블 생성 (스키마 바뀌면 다시 실행)
+npm run db:seed               # (선택) 4개월치 데모 데이터. 지우려면 npx prisma db push --force-reset
 npm run dev                   # http://localhost:3000
 ```
 
-배포:
-- **홈서버 추천.** `npm run build && npm start`를 pm2나 docker로 돌리고, Cloudflare Tunnel로 `https://money.내도메인` 연결. 폰이 외부에서 접근해야 하니까 https 필수.
-- Vercel에 올리려면 SQLite는 안 됨. `schema.prisma` provider를 `postgresql`로 바꾸고, `src/lib/db.ts` 어댑터를 `@prisma/adapter-pg`로 교체 (Neon/Supabase).
-
-주간 피드백 크론 (매주 월요일 08:41 KST):
+Vercel 말고 홈서버에 올려도 됨: Postgres 하나 띄우고 `npm run build && npm start` + Cloudflare Tunnel로 https 연결.
+그때 주간 피드백 크론은 직접 등록:
 ```cron
 41 8 * * 1  curl -s -H "Authorization: Bearer $CRON_SECRET" https://money.내도메인/api/cron/weekly-feedback
 ```
+
 `GEMINI_API_KEY` 있으면 Gemini가 직설 피드백 + 모르는 가맹점 자동 분류. 없으면 규칙 기반으로 동작.
 키는 [Google AI Studio](https://aistudio.google.com/apikey)에서 카드 없이 무료 발급(프리티어). 한도(429)에 걸리면 그 호출만 규칙 기반으로 폴백하고, 분류 실패한 가맹점은 다음 결제 때 다시 시도함.
 프리티어는 입력·출력이 Google 모델 개선에 쓰일 수 있음 (가맹점명·금액 통계가 넘어감).

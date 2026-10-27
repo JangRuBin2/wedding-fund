@@ -1,12 +1,12 @@
 // Prisma 7 (Rust 엔진 없는 클라이언트 + driver adapter). DB 주소는 prisma.config.ts에서 읽음.
-// 개인용이라 기본은 SQLite. Postgres로 바꾸려면 provider + src/lib/db.ts 어댑터만 교체.
+// DB는 Postgres (Vercel + Neon 무료 티어 기준). 런타임 연결은 src/lib/db.ts 의 adapter-pg.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 /// 결제 알림을 보내는 사람 (커플 공유 모드: 기기마다 이름을 다르게 설정)

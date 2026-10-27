@@ -1,7 +1,7 @@
 import "dotenv/config";
 /**
  * 데모 데이터: 최근 4개월치 가짜 결제 알림을 실제 ingest 파이프라인(파서→분류→중복제거)에 흘려보냄.
- * 대시보드 생김새 확인용. 실사용 전에 `rm prisma/data.db && npm run db:push` 로 초기화.
+ * 대시보드 생김새 확인용. 실사용 전에 `npx prisma db push --force-reset` 로 초기화.
  */
 import { prisma } from "../src/lib/db";
 import { ingestNotification } from "../src/lib/ingest";
