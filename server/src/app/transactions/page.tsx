@@ -7,12 +7,16 @@ import { addManual, deleteTransaction, setStatus, updateTransaction } from "../a
 
 export const dynamic = "force-dynamic";
 
-type SP = Promise<{ month?: string; status?: string; type?: string; q?: string }>;
+type Param = string | string[] | undefined;
+type SP = Promise<{ month?: Param; status?: Param; type?: Param; q?: Param }>;
 
 export default async function Transactions({ searchParams }: { searchParams: SP }) {
-  const sp = await searchParams;
+  const raw = await searchParams;
+  // ?q=a&q=b 처럼 배열로 오거나 형식이 틀린 값은 무시
+  const one = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const sp = { month: one(raw.month), status: one(raw.status), type: one(raw.type), q: one(raw.q) };
   const now = new Date();
-  const base = sp.month ? new Date(`${sp.month}-15T00:00:00+09:00`) : now;
+  const base = sp.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month) ? new Date(`${sp.month}-15T00:00:00+09:00`) : now;
   const from = kstMonthStart(base);
   const to = kstMonthStart(base, 1);
   const { year, month } = kstParts(base);

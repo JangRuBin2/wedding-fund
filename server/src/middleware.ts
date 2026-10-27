@@ -10,9 +10,15 @@ export function middleware(req: NextRequest) {
 
   const auth = req.headers.get("authorization");
   if (auth?.startsWith("Basic ")) {
-    const decoded = atob(auth.slice(6));
-    const pass = decoded.slice(decoded.indexOf(":") + 1);
-    if (pass === password) return NextResponse.next();
+    try {
+      // 한글 비밀번호도 되게 UTF-8로 디코딩
+      const bytes = Uint8Array.from(atob(auth.slice(6)), (c) => c.charCodeAt(0));
+      const decoded = new TextDecoder().decode(bytes);
+      const pass = decoded.slice(decoded.indexOf(":") + 1);
+      if (pass === password) return NextResponse.next();
+    } catch {
+      // 깨진 헤더는 그냥 다시 로그인 요청
+    }
   }
   return new NextResponse("로그인이 필요해요", {
     status: 401,

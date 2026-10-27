@@ -13,9 +13,7 @@ class PaymentListenerService : NotificationListenerService() {
   override fun onListenerConnected() {
     super.onListenerConnected()
     // 재연결될 때 밀린 거 전송 시도
-    Thread {
-      try { Forwarder.flushBlocking(Store(applicationContext)) } catch (_: Exception) {}
-    }.start()
+    Forwarder.flushAsync(applicationContext)
   }
 
   override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -29,7 +27,11 @@ class PaymentListenerService : NotificationListenerService() {
     val title = (extras.getCharSequence(Notification.EXTRA_TITLE_BIG)
       ?: extras.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim().orEmpty()
     // 은행/카드 앱은 펼친 본문(bigText)이나 여러 줄(textLines)에 전체 내용이 있는 경우가 많음
-    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.joinToString("\n")
+    // 문자앱 묶음 알림(InboxStyle)은 예전 문자까지 줄줄이 들어 있어서, 마지막 줄만으로 결제 알림이면 그 줄만 씀
+    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.map { it.toString() }?.let { ls ->
+      val last = ls.lastOrNull()
+      if (ls.size > 1 && last != null && Forwarder.looksLikePayment(last)) last else ls.joinToString("\n")
+    }
     val text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
       ?: lines
       ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())?.trim().orEmpty()

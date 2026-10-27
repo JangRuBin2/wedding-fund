@@ -79,11 +79,16 @@ export default function App() {
 
   const onSave = async () => {
     setBusy(true);
-    PaymentListener.saveSettings(settings);
-    const result = await PaymentListener.testConnection();
-    setMsg(result);
-    setBusy(false);
-    if (good(result)) setEditing(false);
+    try {
+      PaymentListener.saveSettings(settings);
+      const result = await PaymentListener.testConnection();
+      setMsg(result);
+      if (good(result)) setEditing(false);
+    } catch (e) {
+      setMsg(`저장하지 못했어요. ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onFlush = async () => {
@@ -127,9 +132,17 @@ export default function App() {
         </View>
         <Text style={[s.heroBody, { color: c.coverSub }]}>{state.body}</Text>
         {!granted && (
-          <Btn c={c} onPress={() => PaymentListener.openPermissionSettings()} onCover>
-            알림 접근 허용하러 가기
-          </Btn>
+          <>
+            <Btn c={c} onPress={() => PaymentListener.openPermissionSettings()} onCover>
+              알림 접근 허용하러 가기
+            </Btn>
+            <Text style={[s.heroBody, { color: c.coverSub, marginTop: 12 }]}>
+              스위치가 회색으로 잠겨 있다면, 앱 정보 → 오른쪽 위 ⋮ → &apos;제한된 설정 허용&apos;을 먼저 눌러 주세요
+            </Text>
+            <Btn c={c} onPress={() => PaymentListener.openAppDetails()} onCover>
+              앱 정보 열기
+            </Btn>
+          </>
         )}
         {granted && configured && queued > 0 && (
           <Btn c={c} onPress={onFlush} onCover>
@@ -137,7 +150,7 @@ export default function App() {
           </Btn>
         )}
         {granted && configured && queued === 0 && (
-          <Btn c={c} onPress={() => Linking.openURL(saved.serverUrl)} onCover>
+          <Btn c={c} onPress={() => Linking.openURL(saved.serverUrl).catch(() => setMsg("대시보드를 열지 못했어요. 서버 주소를 확인해 주세요"))} onCover>
             대시보드 열기
           </Btn>
         )}
@@ -173,7 +186,7 @@ export default function App() {
           <View style={{ gap: 2, marginTop: 6 }}>
             <Field c={c} label="서버 주소" value={settings.serverUrl} onChangeText={(v) => set({ serverUrl: v })} placeholder="https://money.example.com" keyboardType="url" />
             <Field c={c} label="토큰" hint="서버에 설정한 INGEST_TOKEN 값을 입력해 주세요" value={settings.token} onChangeText={(v) => set({ token: v })} secureTextEntry />
-            <Field c={c} label="내 이름" hint="둘이 함께 쓴다면 서로 다른 이름을 입력해 주세요" value={settings.memberName} onChangeText={(v) => set({ memberName: v })} placeholder="민준" />
+            <Field c={c} label="내 이름" hint="둘이 함께 쓴다면 서로 다른 이름을 입력해 주세요" value={settings.memberName} onChangeText={(v) => set({ memberName: v })} placeholder="민준" maxLength={30} />
             <View style={[s.row, { paddingVertical: 6 }]}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={{ color: c.ink, fontSize: 15 }}>카카오톡 알림톡도 받기</Text>

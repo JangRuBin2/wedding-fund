@@ -4,7 +4,10 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** SharedPreferences 기반 설정/전송큐/로그. 서비스(네이티브)와 앱 UI(JS) 양쪽에서 같이 씀 */
+/**
+ * SharedPreferences 기반 설정/전송큐/로그. 서비스(네이티브)와 앱 UI(JS) 양쪽에서 같이 씀.
+ * 호출할 때마다 새 인스턴스가 생기므로 큐·로그는 인스턴스가 아니라 전역 LOCK으로 보호.
+ */
 class Store(context: Context) {
   private val prefs = context.applicationContext.getSharedPreferences("payment_listener", Context.MODE_PRIVATE)
 
@@ -26,11 +29,9 @@ class Store(context: Context) {
 
   val configured: Boolean get() = serverUrl.isNotEmpty() && token.isNotEmpty()
 
-  @Synchronized
-  fun queue(): JSONArray = JSONArray(prefs.getString("queue", "[]") ?: "[]")
+  fun queue(): JSONArray = synchronized(LOCK) { JSONArray(prefs.getString("queue", "[]") ?: "[]") }
 
-  @Synchronized
-  fun enqueue(item: JSONObject) {
+  fun enqueue(item: JSONObject) = synchronized(LOCK) {
     val q = queue()
     q.put(item)
     // 서버가 오래 죽어 있어도 저장공간 안 터지게 최근 500건만 유지
@@ -40,16 +41,17 @@ class Store(context: Context) {
     prefs.edit().putString("queue", trimmed.toString()).commit()
   }
 
-  @Synchronized
-  fun clearQueue() {
-    prefs.edit().putString("queue", "[]").commit()
+  /** 앞에서부터 보낸 만큼만 지움 (보내는 사이에 새로 쌓인 건 남김) */
+  fun dropFirst(n: Int) = synchronized(LOCK) {
+    val q = queue()
+    val rest = JSONArray()
+    for (i in minOf(n, q.length()) until q.length()) rest.put(q.get(i))
+    prefs.edit().putString("queue", rest.toString()).commit()
   }
 
-  @Synchronized
-  fun log(): JSONArray = JSONArray(prefs.getString("log", "[]") ?: "[]")
+  fun log(): JSONArray = synchronized(LOCK) { JSONArray(prefs.getString("log", "[]") ?: "[]") }
 
-  @Synchronized
-  fun addLog(packageName: String, preview: String, result: String) {
+  fun addLog(packageName: String, preview: String, result: String) = synchronized(LOCK) {
     val entry = JSONObject()
       .put("at", System.currentTimeMillis())
       .put("packageName", packageName)
@@ -64,5 +66,6 @@ class Store(context: Context) {
   companion object {
     const val MAX_QUEUE = 500
     const val MAX_LOG = 50
+    private val LOCK = Any()
   }
 }

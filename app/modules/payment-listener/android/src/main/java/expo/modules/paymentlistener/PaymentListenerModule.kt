@@ -3,6 +3,7 @@ package expo.modules.paymentlistener
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
@@ -23,9 +24,12 @@ class PaymentListenerModule : Module() {
     }
 
     Function("openPermissionSettings") {
-      context.startActivity(
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      )
+      open(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
+
+    /** '제한된 설정 허용'은 앱 정보 화면의 ⋮ 메뉴에 있음 */
+    Function("openAppDetails") {
+      open(appDetails())
     }
 
     Function("isIgnoringBatteryOptimizations") {
@@ -34,9 +38,7 @@ class PaymentListenerModule : Module() {
     }
 
     Function("openBatterySettings") {
-      context.startActivity(
-        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      )
+      open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
     }
 
     /** 서비스가 OS에 의해 끊겼을 때 다시 붙이기 */
@@ -69,5 +71,17 @@ class PaymentListenerModule : Module() {
     AsyncFunction("testConnection") { Forwarder.testBlocking(Store(context)) }
 
     AsyncFunction("flushQueue") { Forwarder.flushBlocking(Store(context)) }
+  }
+
+  private fun appDetails() =
+    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+
+  /** 기기마다 없는 설정 화면이 있어서, 실패하면 앱 정보 화면으로 대신 이동 (앱이 꺼지지 않게) */
+  private fun open(intent: Intent) {
+    try {
+      context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (e: Exception) {
+      try { context.startActivity(appDetails().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
+    }
   }
 }

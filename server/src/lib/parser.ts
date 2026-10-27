@@ -45,7 +45,11 @@ const CHAT_PACKAGES = new Set(["com.kakao.talk"]);
 
 const AMOUNT_RE = /(\d{1,3}(?:,\d{3})+|\d+)\s*원/g;
 /** 이 단어 바로 뒤 금액은 결제금액이 아님 */
-const NON_PAYMENT_PREFIX = /(누적|잔액|잔고|한도|가능|포인트|적립|캐시백|합계)[\s:]*$/;
+const NON_PAYMENT_PREFIX = /(누적|잔액|잔고|한도|가능|포인트|적립|캐시백|합계|예정|최대|할인)[\s:]*$/;
+/** 결제가 아니라 청구·마케팅 안내인 알림 (금액은 있지만 돈이 나간 게 아님) */
+const NOTICE_RE = /결제\s*예정|결제하실|청구\s*(금액|예정)|명세서|최대\s*[\d,]+\s*원|\(광고\)|이벤트|쿠폰/;
+/** DB 정수 범위(약 21억) 안전선. 이보다 큰 금액은 파싱 오류로 봄 */
+const MAX_AMOUNT = 2_000_000_000;
 
 const CANCEL_RE = /취소/;
 const INCOME_RE = /입금|급여|이자\s*지급|환급/;
@@ -60,9 +64,10 @@ export function parseNotification(input: NotificationInput): ParsedNotification 
 
   // 거절/실패 알림은 무시
   if (/거절|실패|오류|부족/.test(full)) return null;
+  if (NOTICE_RE.test(full)) return null;
 
   const amount = findAmount(full);
-  if (amount == null || amount <= 0) return null;
+  if (amount == null || amount <= 0 || amount > MAX_AMOUNT) return null;
 
   const cancelled = CANCEL_RE.test(full);
   const kw = full.replace(/입출금/g, ""); // '입출금통장' 때문에 출금으로 오인하지 않게

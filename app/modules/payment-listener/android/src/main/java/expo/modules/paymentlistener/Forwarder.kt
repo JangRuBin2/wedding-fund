@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -22,12 +23,16 @@ import java.util.concurrent.Executors
 object Forwarder {
   private const val TAG = "PaymentListener"
   private const val NUDGE_CHANNEL = "nudge"
+  private const val FLUSH_CHUNK = 50
   private val executor = Executors.newSingleThreadExecutor()
+  private val flushLock = Any()
 
   private val MONEY = Regex("""\d[\d,]*\s*원""")
   private val KEYWORD = Regex("승인|결제|사용|입금|출금|취소|체크|일시불|할부|이체")
   private val FINANCE_SENDER = Regex("카드|은행|뱅크|페이|pay|증권|금융|토스|BC|NH|KB|IBK", RegexOption.IGNORE_CASE)
   private val IGNORED = setOf("android", "com.android.systemui", "com.samsung.android.app.smartcapture")
+
+  fun looksLikePayment(s: String) = MONEY.containsMatchIn(s) && KEYWORD.containsMatchIn(s)
 
   fun shouldForward(context: Context, store: Store, pkg: String, title: String, text: String): Boolean {
     if (pkg == context.packageName || pkg in IGNORED) return false
@@ -66,13 +71,28 @@ object Forwarder {
     }
   }
 
-  /** 밀린 큐 전송. 성공 시 보낸 건수 반환 */
-  fun flushBlocking(store: Store): Int {
-    val q = store.queue()
-    if (q.length() == 0 || !store.configured) return 0
-    post(store, q.toString())
-    store.clearQueue()
-    return q.length()
+  /** 밀린 큐를 FLUSH_CHUNK건씩 나눠 전송. 보낸 건수 반환. 동시에 두 군데서 보내지 않게 잠금 */
+  fun flushBlocking(store: Store): Int = synchronized(flushLock) {
+    if (!store.configured) return 0
+    var sent = 0
+    while (true) {
+      val q = store.queue()
+      if (q.length() == 0) break
+      val chunk = JSONArray()
+      for (i in 0 until minOf(FLUSH_CHUNK, q.length())) chunk.put(q.get(i))
+      post(store, chunk.toString())
+      store.dropFirst(chunk.length())
+      sent += chunk.length()
+    }
+    sent
+  }
+
+  /** 서비스 재연결 때처럼 메인 스레드가 아닌 곳에서 밀린 큐 전송 */
+  fun flushAsync(context: Context) {
+    val app = context.applicationContext
+    executor.execute {
+      try { flushBlocking(Store(app)) } catch (e: Exception) { Log.w(TAG, "flush failed", e) }
+    }
   }
 
   /** 인증만 확인 (빈 배열 전송 → 서버는 [] 반환) */

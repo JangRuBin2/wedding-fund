@@ -12,6 +12,7 @@ export type LogEntry = { at: number; packageName: string; preview: string; resul
 type Native = {
   isPermissionGranted(): boolean;
   openPermissionSettings(): void;
+  openAppDetails(): void;
   isIgnoringBatteryOptimizations(): boolean;
   openBatterySettings(): void;
   requestRebind(): void;

@@ -14,6 +14,24 @@ type Case = {
 
 const cases: Case[] = [
   {
+    name: "카드 청구 예정 안내는 무시",
+    title: "신한카드",
+    text: "[신한카드] 11월 결제예정금액은 1,234,560원입니다.",
+    expect: null,
+  },
+  {
+    name: "결제하실 금액 안내는 무시",
+    title: "KB국민카드",
+    text: "[KB국민카드] 11/14 결제하실 금액 832,000원",
+    expect: null,
+  },
+  {
+    name: "할인 마케팅은 무시",
+    title: "현대카드",
+    text: "(광고) 현대카드로 결제 시 최대 5,000원 할인!",
+    expect: null,
+  },
+  {
     name: "신한 문자 한 줄 포맷",
     packageName: "com.samsung.android.messaging",
     title: "15447200",

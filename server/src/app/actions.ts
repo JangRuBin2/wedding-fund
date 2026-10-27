@@ -34,6 +34,13 @@ export async function updateTransaction(form: FormData) {
     });
     const same = await prisma.transaction.findMany({ where: { type: tx.type }, select: { id: true, merchant: true } });
     const ids = same.filter((t) => normalizeMerchant(t.merchant) === key).map((t) => t.id);
+    if (category !== SAVINGS_CATEGORY) {
+      // 전에 '저축'으로 학습돼서 집계 제외됐던 건은 다시 집계에 포함
+      await prisma.transaction.updateMany({
+        where: { id: { in: ids }, category: SAVINGS_CATEGORY, status: "IGNORED" },
+        data: { status: "CONFIRMED" },
+      });
+    }
     await prisma.transaction.updateMany({
       where: { id: { in: ids } },
       data: category === SAVINGS_CATEGORY ? { category, status: "IGNORED" } : { category },
