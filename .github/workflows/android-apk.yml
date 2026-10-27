@@ -51,6 +51,10 @@ jobs:
       - name: Expo prebuild (android 네이티브 프로젝트 생성)
         run: npx expo prebuild --platform android --no-install --clean
 
+      # 업데이트 설치가 되려면 versionCode가 계속 올라가야 해서 실행 번호로 지정
+      - name: Version code
+        run: sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/" android/app/build.gradle && grep -n versionCode android/app/build.gradle
+
       # 서명 키를 secrets에 넣어두면 그걸로 서명 → 업데이트 시 덮어쓰기 설치 가능.
       # 없으면 디버그 키로 서명 (빌드마다 키가 달라져서 업데이트 때 기존 앱 삭제 후 설치해야 함)
       - name: Release signing (optional)
