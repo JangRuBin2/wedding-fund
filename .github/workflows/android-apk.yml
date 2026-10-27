@@ -42,6 +42,29 @@ jobs:
       - name: Check Android SDK
         run: echo "ANDROID_HOME=$ANDROID_HOME" && ls "$ANDROID_HOME"
 
+      # 서명 secret이 잘못 들어가 있으면 8분 빌드 끝에 실패하지 않게 처음에 바로 확인
+      - name: Check signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        working-directory: .
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "서명 키 secret 없음 → 디버그 키로 서명"; exit 0; fi
+          trim() { printf %s "$1" | tr -d '[:space:]'; }
+          for v in KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "$(trim "${!v}")" ] || { echo "::error::ANDROID_$v secret이 비어 있어요"; exit 1; }
+          done
+          trim "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/check.keystore" 2>/dev/null \
+            || { echo "::error::ANDROID_KEYSTORE_BASE64 값이 잘렸거나 올바르지 않아요"; exit 1; }
+          PW=$(trim "$KEYSTORE_PASSWORD")
+          keytool -list -keystore "$RUNNER_TEMP/check.keystore" -storepass "$PW" >/dev/null 2>&1 \
+            || { echo "::error::ANDROID_KEYSTORE_PASSWORD가 틀렸거나 ANDROID_KEYSTORE_BASE64 값이 중간에 잘렸어요"; exit 1; }
+          keytool -list -keystore "$RUNNER_TEMP/check.keystore" -storepass "$PW" -alias "$(trim "$KEY_ALIAS")" >/dev/null 2>&1 \
+            || { echo "::error::ANDROID_KEY_ALIAS가 키 파일에 없어요"; exit 1; }
+          echo "서명 secret 확인 완료"
+
       - name: Install deps
         run: npm ci
 
@@ -65,7 +88,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_B64" ]; then echo "서명 키 없음 → 디버그 키로 서명"; exit 0; fi
-          echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
+          trim() { printf %s "$1" | tr -d '[:space:]'; }
+          KEYSTORE_PASSWORD=$(trim "$KEYSTORE_PASSWORD"); KEY_ALIAS=$(trim "$KEY_ALIAS"); KEY_PASSWORD=$(trim "$KEY_PASSWORD")
+          trim "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
           cat >> android/app/build.gradle <<EOF
 
           android {
