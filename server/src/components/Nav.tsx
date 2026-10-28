@@ -1,5 +1,6 @@
 "use client";
-import Link, { useLinkStatus } from "next/link";
+import Link from "next/link";
+import { LinkPending } from "./LinkPending";
 import { usePathname } from "next/navigation";
 
 const I = {
@@ -61,7 +62,7 @@ export function Nav() {
                   {t.icon}
                 </svg>
                 {t.label}
-                <Pending />
+                <LinkPending className="rounded-[18px]" />
               </Link>
             </li>
           );
@@ -71,8 +72,3 @@ export function Nav() {
   );
 }
 
-/** 누른 탭에 바로 표시 (페이지가 다 그려질 때까지) */
-function Pending() {
-  const { pending } = useLinkStatus();
-  return pending ? <span className="absolute inset-0 animate-pulse rounded-[18px] bg-save-soft/70" aria-hidden /> : null;
-}

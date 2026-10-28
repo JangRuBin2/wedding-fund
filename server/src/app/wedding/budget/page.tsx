@@ -251,16 +251,16 @@ export default async function WeddingBudgetPage() {
                                 <span className="label">메모</span>
                                 <input name="memo" defaultValue={i.memo ?? ""} placeholder="업체, 계약 조건, 연락처" className="input !bg-card" />
                               </label>
-                              <button className="btn col-span-2">저장</button>
+                              <SubmitButton className="col-span-2" pendingText="저장 중…">저장</SubmitButton>
                             </form>
                             <div className="flex gap-2">
                               {!done && i.budget > 0 && (
                                 <form action={settleWeddingItem.bind(null, i.id)}>
-                                  <button className="btn-ghost">남은 돈 다 냈어요</button>
+                                  <SubmitButton base="btn-ghost" pendingText="…">남은 돈 다 냈어요</SubmitButton>
                                 </form>
                               )}
                               <form action={deleteWeddingItem.bind(null, i.id)}>
-                                <button className="btn-ghost !text-spend">삭제</button>
+                                <SubmitButton base="btn-ghost" className="!text-spend" pendingText="…">삭제</SubmitButton>
                               </form>
                             </div>
                           </div>
@@ -292,7 +292,7 @@ export default async function WeddingBudgetPage() {
           <input name="budget" inputMode="numeric" placeholder="예산 (원)" className="input num" />
           <input name="dueDate" type="date" className="input" aria-label="잔금일" />
           <input name="paid" inputMode="numeric" placeholder="이미 낸 돈 (원)" className="input num" />
-          <button className="btn col-span-2">추가</button>
+          <SubmitButton className="col-span-2" pendingText="저장 중…">추가</SubmitButton>
         </form>
       </section>
 

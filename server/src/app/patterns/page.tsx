@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkPending } from "@/components/LinkPending";
 import { byCategory, categoryTrend, detectRecurring, expensesBetween, heatmap, lateNight, topMerchants, weekdayVsWeekend } from "@/lib/analytics";
 import { colorOf } from "@/lib/colors";
 import { CategoryBreakdown } from "@/components/Charts";
@@ -35,14 +36,17 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
         <h1 className="text-[22px] font-bold">소비 분석</h1>
         <div className="flex rounded-[14px] bg-card p-1 shadow-[var(--shadow-card)]" role="tablist" aria-label="기간">
           {[30, 90, 180].map((d) => (
-            <a
+            <Link
               key={d}
               href={`/patterns?days=${d}`}
+              scroll={false}
+              replace
               aria-current={d === days ? "page" : undefined}
-              className={`num rounded-[10px] px-3 py-1.5 text-[13px] font-semibold ${d === days ? "bg-save text-white shadow-sm" : "text-sub"}`}
+              className={`num relative rounded-[10px] px-3 py-1.5 text-[13px] font-semibold ${d === days ? "bg-save text-white shadow-sm" : "text-sub"}`}
             >
               {d}일
-            </a>
+              <LinkPending />
+            </Link>
           ))}
         </div>
       </header>

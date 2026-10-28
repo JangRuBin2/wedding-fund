@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { fmtKst, toKst } from "@/lib/time";
@@ -63,7 +64,7 @@ export default async function Settings() {
           <p className="col-span-2 text-[12px] leading-relaxed text-sub">
             모은 돈은 이미 모아둔 돈에 시작일 이후 (수입 − 지출)을 더해서 계산해요. 적금 납입이나 내 계좌 간 이체는 내역에서 집계 제외해 주세요
           </p>
-          <button className="btn col-span-2">목표 저장</button>
+          <SubmitButton className="col-span-2" pendingText="저장 중…">목표 저장</SubmitButton>
         </form>
       </section>
 
@@ -89,16 +90,16 @@ export default async function Settings() {
                     <form action={renameUser} className="flex flex-1 gap-2">
                       <input type="hidden" name="id" value={u.id} />
                       <input name="name" defaultValue={u.name} list="member-names" aria-label="이름" className="input !py-1.5 text-[14px]" />
-                      <button className="btn-ghost shrink-0 !bg-paper">이름 저장</button>
+                      <SubmitButton base="btn-ghost" className="shrink-0 !bg-paper" pendingText="…">이름 저장</SubmitButton>
                     </form>
                     {isOwner && u.id !== session?.uid && u.status !== "APPROVED" && (
                       <form action={setUserStatus.bind(null, u.id, "APPROVED")}>
-                        <button className="btn-ghost !bg-save !text-white">승인</button>
+                        <SubmitButton base="btn-ghost" className="!bg-save !text-white" pendingText="…">승인</SubmitButton>
                       </form>
                     )}
                     {isOwner && u.id !== session?.uid && u.status !== "REJECTED" && (
                       <form action={setUserStatus.bind(null, u.id, "REJECTED")}>
-                        <button className="btn-ghost !text-spend">{u.status === "PENDING" ? "거절" : "막기"}</button>
+                        <SubmitButton base="btn-ghost" className="!text-spend" pendingText="…">{u.status === "PENDING" ? "거절" : "막기"}</SubmitButton>
                       </form>
                     )}
                   </div>
@@ -183,7 +184,7 @@ export default async function Settings() {
                     <Tri name="householder" label="세대주예요" />
                     <Tri name="changedJobThisYear" label="올해 이직·퇴사했어요" />
                     <Tri name="married" label="혼인신고 했어요" />
-                    <button className="btn col-span-2">저장</button>
+                    <SubmitButton className="col-span-2" pendingText="저장 중…">저장</SubmitButton>
                   </form>
                 </details>
               );

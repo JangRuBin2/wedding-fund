@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { LinkPending } from "@/components/LinkPending";
+import { SubmitButton } from "@/components/SubmitButton";
 import { prisma } from "@/lib/db";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import { fmtKst, kstMonthStart, kstParts, manwon, WEEKDAYS } from "@/lib/time";
@@ -85,9 +87,9 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
           </>
         ) : (
           <div className="flex w-full items-center justify-between">
-            <Link href={`/transactions?month=${ym(-1)}`} aria-label="이전 달" className="btn-ghost !px-3">‹</Link>
+            <Link href={`/transactions?month=${ym(-1)}`} scroll={false} replace aria-label="이전 달" className="btn-ghost relative !px-3">‹<LinkPending className="rounded-[12px]" /></Link>
             <h1 className="num text-[20px] font-bold">{year}년 {month + 1}월</h1>
-            <Link href={`/transactions?month=${ym(1)}`} aria-label="다음 달" className="btn-ghost !px-3">›</Link>
+            <Link href={`/transactions?month=${ym(1)}`} scroll={false} replace aria-label="다음 달" className="btn-ghost relative !px-3">›<LinkPending className="rounded-[12px]" /></Link>
           </div>
         )}
       </header>
@@ -141,7 +143,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
               ))}
             </select>
           )}
-          <button className="btn col-span-2">내역에 추가</button>
+          <SubmitButton className="col-span-2" pendingText="저장 중…">내역에 추가</SubmitButton>
         </form>
       </details>
 
@@ -183,20 +185,20 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                     <label className="col-span-2 flex items-center gap-2 text-[13px] text-sub">
                       <input type="checkbox" name="learn" defaultChecked /> 다음부터 이 가맹점은 이 카테고리로 분류하기
                     </label>
-                    <button className="btn col-span-2">저장</button>
+                    <SubmitButton className="col-span-2" pendingText="저장 중…">저장</SubmitButton>
                   </form>
                   <div className="flex gap-2">
                     {t.status !== "IGNORED" ? (
                       <form action={setStatus.bind(null, t.id, "IGNORED")}>
-                        <button className="btn-ghost">집계 제외</button>
+                        <SubmitButton base="btn-ghost" pendingText="…">집계 제외</SubmitButton>
                       </form>
                     ) : (
                       <form action={setStatus.bind(null, t.id, "CONFIRMED")}>
-                        <button className="btn-ghost">다시 포함</button>
+                        <SubmitButton base="btn-ghost" pendingText="…">다시 포함</SubmitButton>
                       </form>
                     )}
                     <form action={deleteTransaction.bind(null, t.id)}>
-                      <button className="btn-ghost !text-spend">삭제</button>
+                      <SubmitButton base="btn-ghost" className="!text-spend" pendingText="…">삭제</SubmitButton>
                     </form>
                   </div>
                   <p className="text-[11px] text-sub">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkPending } from "./LinkPending";
 
 /** 결혼준비 상단: 제목 + D-day + 할 일/예산 탭 */
 export function WeddingHeader({ active, daysLeft }: { active: "todo" | "budget"; daysLeft?: number }) {
@@ -18,11 +19,12 @@ export function WeddingHeader({ active, daysLeft }: { active: "todo" | "budget";
             key={t.key}
             href={t.href}
             aria-current={active === t.key ? "page" : undefined}
-            className={`flex-1 rounded-[10px] py-2 text-center text-[14px] font-semibold ${
+            className={`relative flex-1 rounded-[10px] py-2 text-center text-[14px] font-semibold ${
               active === t.key ? "bg-save text-white shadow-sm" : "text-sub"
             }`}
           >
             {t.label}
+            <LinkPending />
           </Link>
         ))}
       </nav>

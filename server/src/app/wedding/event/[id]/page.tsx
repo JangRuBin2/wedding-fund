@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/SubmitButton";
+import { OptimisticCheck } from "@/components/OptimisticCheck";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { suggestionsFor } from "@/lib/checklist";
@@ -60,9 +62,9 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
             </p>
           </div>
           <form action={toggleStep.bind(null, s.id)}>
-            <button className="rounded-full bg-white/90 px-3.5 py-2 text-[13px] font-bold text-save">
+            <SubmitButton base="" pendingText="…" className="rounded-full bg-white/90 px-3.5 py-2 text-[13px] font-bold text-save">
               {s.done ? "완료 취소" : "완료"}
-            </button>
+            </SubmitButton>
           </form>
         </div>
         {s.hint && <p className="rounded-xl bg-spend-soft px-3 py-2 text-[13px] text-spend">{s.hint}</p>}
@@ -84,16 +86,9 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
                 return (
                   <li key={t.id} className="py-2.5">
                     <div className="flex items-start gap-2.5">
-                      <form action={toggleTask.bind(null, t.id)} className="pt-0.5">
-                        <button
-                          aria-label={t.done ? `${t.content} 완료 취소` : `${t.content} 완료`}
-                          className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-[11px] font-bold ${
-                            t.done ? "border-save bg-save text-white" : "border-line"
-                          }`}
-                        >
-                          {t.done ? "✓" : ""}
-                        </button>
-                      </form>
+                      <div className="pt-0.5">
+                        <OptimisticCheck done={t.done} action={toggleTask.bind(null, t.id)} label={t.content} />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <p className={`text-[14px] ${t.done ? "text-sub line-through" : ""}`}>
                           {t.section === "행정·혜택" && (
@@ -115,7 +110,7 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
                           <form action={setTaskDate} className="mt-2 flex gap-2">
                             <input type="hidden" name="id" value={t.id} />
                             <input name="dueDate" type="date" defaultValue={dateInput(t.dueDate)} className="input !py-1.5 text-[13px]" />
-                            <button className="btn-ghost shrink-0 !bg-paper">저장</button>
+                            <SubmitButton base="btn-ghost" pendingText="…" className="shrink-0 !bg-paper">저장</SubmitButton>
                           </form>
                         </details>
                       </div>
@@ -132,7 +127,7 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
             <input type="hidden" name="stepId" value={s.id} />
             <input name="content" placeholder="예: 촬영용 옷 구매" required className="input col-span-2 text-[14px]" />
             <input name="dueDate" type="date" aria-label="일정 (선택)" className="input text-[14px]" />
-            <button className="btn shrink-0">추가</button>
+            <SubmitButton pendingText="추가 중…" className="shrink-0">추가</SubmitButton>
           </form>
           {suggestions.length > 0 && (
             <form action={addSuggestedTasks.bind(null, s.id)}>
@@ -158,7 +153,7 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
             className="input resize-y text-[14px] leading-relaxed"
           />
           <div className="text-right">
-            <button className="btn-ghost !bg-paper">메모 저장</button>
+            <SubmitButton base="btn-ghost" pendingText="저장 중…" className="!bg-paper">메모 저장</SubmitButton>
           </div>
         </form>
       </section>
@@ -236,7 +231,7 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
               ))}
             </select>
             <input name="payerNote" placeholder="결제자가 기타면 누구인지 (예: 신부 어머니)" className="input col-span-2 text-[14px]" />
-            <button className="btn col-span-2">결제 추가</button>
+            <SubmitButton pendingText="추가 중…" className="col-span-2">결제 추가</SubmitButton>
           </form>
         </div>
         <p className="mt-2 px-1 text-[12px] text-sub">
@@ -251,10 +246,10 @@ export default async function WeddingEventPage({ params }: { params: Promise<{ i
           <input type="hidden" name="note" value={s.note ?? ""} />
           <input name="title" defaultValue={s.title} className="input col-span-2" />
           <input name="targetDate" type="date" defaultValue={dateInput(s.targetDate)} className="input col-span-2" />
-          <button className="btn col-span-2">저장</button>
+          <SubmitButton className="col-span-2">저장</SubmitButton>
         </form>
         <form action={deleteWeddingStep.bind(null, s.id)} className="mt-2 text-right">
-          <button className="btn-ghost !text-spend">이 이벤트 삭제</button>
+          <SubmitButton base="btn-ghost" className="!text-spend" pendingText="…">이 이벤트 삭제</SubmitButton>
         </form>
       </details>
     </main>
