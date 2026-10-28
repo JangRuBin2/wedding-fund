@@ -3,6 +3,7 @@ import { getGoalStatus } from "@/lib/goal";
 import { dueDateLabel, dueLabel, weddingOverview, WEDDING_GROUPS, WEDDING_SUGGESTIONS } from "@/lib/wedding";
 import { manwon, toKst } from "@/lib/time";
 import { SubmitButton } from "@/components/SubmitButton";
+import { PHOTOS, photoUrl } from "@/lib/photos";
 import {
   addWeddingItem,
   addWeddingTemplate,
@@ -84,6 +85,31 @@ export default async function WeddingPage() {
             )}
           </section>
 
+          <section className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" aria-label="큰 준비 항목">
+            {PHOTO_CARDS.map((c) => {
+              const items = w.items.filter((i) => i.group === c.group);
+              const budget = items.reduce((s, i) => s + i.budget, 0);
+              const paid = items.reduce((s, i) => s + i.paid, 0);
+              return (
+                <a
+                  key={c.group}
+                  href={`#${encodeURIComponent(c.group)}`}
+                  className="photo-card flex h-44 w-[72%] shrink-0 snap-start flex-col justify-end p-4"
+                  style={PHOTOS[c.photo] ? ({ "--photo": photoUrl(c.photo) } as React.CSSProperties) : undefined}
+                >
+                  <p className="text-[12px] font-medium opacity-85">{c.group}</p>
+                  <p className="text-[19px] font-bold">{c.title}</p>
+                  <p className="num mt-1 text-[13px] opacity-90">
+                    {budget ? `${manwon(paid)}원 / ${manwon(budget)}원` : items.length ? "예산 미정" : "항목을 추가해 주세요"}
+                  </p>
+                  <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-white/30">
+                    <span className="block h-full rounded-full bg-white" style={{ width: `${budget ? Math.min(1, paid / budget) * 100 : 0}%` }} />
+                  </span>
+                </a>
+              );
+            })}
+          </section>
+
           {w.upcoming.length > 0 && (
             <section>
               <h2 className="section-title">
@@ -116,7 +142,7 @@ export default async function WeddingPage() {
             if (!items.length) return null;
             const sub = items.reduce((s, i) => s + i.budget, 0);
             return (
-              <section key={g}>
+              <section key={g} id={g} className="scroll-mt-6">
                 <h2 className="section-title">
                   {g}
                   <small className="num">{sub ? `${manwon(sub)}원` : "예산 미정"}</small>
@@ -237,3 +263,10 @@ export default async function WeddingPage() {
     </main>
   );
 }
+
+// 사진은 public/photos/<photo>.jpg (lib/photos.ts에서 켜기). 없으면 그라데이션으로 보임
+const PHOTO_CARDS = [
+  { group: "예물·예단", title: "웨딩링", photo: "ring" },
+  { group: "신혼집·혼수", title: "우리의 첫 집", photo: "home" },
+  { group: "신혼여행", title: "신혼여행", photo: "trip" },
+] as const;

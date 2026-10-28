@@ -9,6 +9,7 @@ import { kstMonthStart, kstParts, manwon, monthKey, DAY } from "@/lib/time";
 import { CategoryBreakdown, DailyBars } from "@/components/Charts";
 import { TxRow } from "@/components/TxRow";
 import { Logo } from "@/components/Logo";
+import { PHOTOS, photoUrl } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -119,7 +120,10 @@ export default async function Home() {
       </header>
 
       {status ? (
-        <section className="hero p-5">
+        <section
+          className={`hero p-5 ${PHOTOS.hero ? "hero-photo" : ""}`}
+          style={PHOTOS.hero ? ({ "--photo": photoUrl("hero") } as React.CSSProperties) : undefined}
+        >
           <p className="text-[19px] leading-snug font-bold">
             우리의 {status.goal.title.replace(/자금$/, "")}까지
             <br />
@@ -200,8 +204,10 @@ export default async function Home() {
       <nav className="grid grid-cols-4 gap-2" aria-label="바로가기">
         {QUICK.map((q) => (
           <Link key={q.href} href={q.href} className="card flex flex-col items-center gap-1.5 !px-1 !py-3 text-[12px] font-semibold text-sub">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl text-[17px]" style={{ background: q.bg }} aria-hidden>
-              {q.icon}
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl text-save" style={{ background: q.bg }} aria-hidden>
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                {q.icon}
+              </svg>
             </span>
             {q.label}
           </Link>
@@ -408,11 +414,44 @@ export default async function Home() {
   );
 }
 
+// 하단 탭과 같은 선 아이콘
 const QUICK = [
-  { href: "/transactions?add=1", label: "직접 기록", icon: "✏️", bg: "var(--color-save-soft)" },
-  { href: "/transactions", label: "내역 보기", icon: "🧾", bg: "var(--color-spend-soft)" },
-  { href: "/wedding", label: "결혼 준비", icon: "💍", bg: "var(--color-save-soft)" },
-  { href: "/settings", label: "목표 설정", icon: "🎯", bg: "var(--color-spend-soft)" },
+  {
+    href: "/transactions?add=1",
+    label: "직접 기록",
+    bg: "var(--color-save-soft)",
+    icon: <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16zM13.5 6.5l4 4" />,
+  },
+  {
+    href: "/transactions",
+    label: "내역 보기",
+    bg: "var(--color-spend-soft)",
+    icon: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3" />,
+  },
+  {
+    href: "/wedding",
+    label: "결혼 준비",
+    bg: "var(--color-save-soft)",
+    icon: (
+      <>
+        <circle cx="9" cy="14" r="5" />
+        <circle cx="15" cy="14" r="5" />
+        <path d="m10 5 2-2 2 2-2 2z" />
+      </>
+    ),
+  },
+  {
+    href: "/settings",
+    label: "목표 설정",
+    bg: "var(--color-spend-soft)",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 12 20 4M17 4h3v3" />
+      </>
+    ),
+  },
 ];
 
 /** 진행률 링 */

@@ -80,6 +80,27 @@
     border-radius: 24px;
     box-shadow: 0 12px 32px rgb(123 140 255 / 0.28);
   }
+  /* 사진 표지: style로 --photo 를 넘기면 사진 위에 글씨가 읽히도록 은은하게 어둡게 깔아 줌 */
+  .hero-photo {
+    background:
+      linear-gradient(180deg, rgb(35 28 70 / 0.38) 0%, rgb(35 28 70 / 0.12) 45%, rgb(35 28 70 / 0.42) 100%),
+      var(--photo) center 30% / cover no-repeat;
+  }
+  /* 결혼준비 사진 카드 (반지·집·여행). 사진이 없으면 그라데이션 */
+  .photo-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    color: #fff;
+    background: var(--hero);
+    box-shadow: var(--shadow-card);
+  }
+  .photo-card[style] {
+    background:
+      linear-gradient(180deg, rgb(30 24 60 / 0.05) 30%, rgb(30 24 60 / 0.6) 100%),
+      var(--photo) center / cover no-repeat;
+  }
+
   /* 표지 위 반투명 유리 */
   .glass {
     background: rgb(255 255 255 / 0.18);
