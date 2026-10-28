@@ -52,104 +52,113 @@
   }
 }
 
-body {
-  background: var(--glow) no-repeat, var(--color-paper);
-  background-attachment: fixed;
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  word-break: keep-all;
+/*
+ * 직접 만든 클래스는 레이어 안에 둬야 Tailwind 유틸리티(py-12, p-0 등)가 덮어쓸 수 있음.
+ * 레이어 밖 CSS는 유틸리티보다 항상 이겨서 여백 클래스가 무시됨
+ */
+@layer base {
+  body {
+    background: var(--glow) no-repeat, var(--color-paper);
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-save);
+    outline-offset: 2px;
+  }
 }
 
-/* 그라데이션 표지 (홈 목표 카드 등) */
-.hero {
-  background: var(--hero);
-  color: var(--color-cover-ink);
-  border-radius: 24px;
-  box-shadow: 0 12px 32px rgb(123 140 255 / 0.28);
-}
-/* 표지 위 반투명 유리 */
-.glass {
-  background: rgb(255 255 255 / 0.18);
-  border: 1px solid rgb(255 255 255 / 0.32);
-  border-radius: 18px;
-  backdrop-filter: blur(10px);
-}
+@layer components {
+  /* 그라데이션 표지 (홈 목표 카드 등) */
+  .hero {
+    background: var(--hero);
+    color: var(--color-cover-ink);
+    border-radius: 24px;
+    box-shadow: 0 12px 32px rgb(123 140 255 / 0.28);
+  }
+  /* 표지 위 반투명 유리 */
+  .glass {
+    background: rgb(255 255 255 / 0.18);
+    border: 1px solid rgb(255 255 255 / 0.32);
+    border-radius: 18px;
+    backdrop-filter: blur(10px);
+  }
 
-.num {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
 
-/* 흰 종이 한 장. 섹션 제목은 바깥에 둬서 카드마다 제목 박히는 느낌을 줄임 */
-.card {
-  background: var(--color-card);
-  border-radius: 20px;
-  padding: 18px;
-  box-shadow: var(--shadow-card);
-}
+  /* 흰 종이 한 장. 섹션 제목은 바깥에 둬서 카드마다 제목 박히는 느낌을 줄임 */
+  .card {
+    background: var(--color-card);
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: var(--shadow-card);
+  }
 
-.section-title {
-  font-size: 15px;
-  font-weight: 700;
-  padding: 0 4px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-.section-title small {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-sub);
-}
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    padding: 0 4px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .section-title small {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-sub);
+  }
 
-.label {
-  font-size: 12px;
-  color: var(--color-sub);
-  font-weight: 500;
-}
+  .label {
+    font-size: 12px;
+    color: var(--color-sub);
+    font-weight: 500;
+  }
 
-.input {
-  width: 100%;
-  background: var(--color-paper);
-  border: 1px solid transparent;
-  border-radius: 12px;
-  padding: 11px 13px;
-  font-size: 15px;
-  outline: none;
-}
-.input:focus {
-  border-color: var(--color-save);
-  background: var(--color-card);
-}
+  .input {
+    width: 100%;
+    background: var(--color-paper);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-size: 15px;
+    outline: none;
+  }
+  .input:focus {
+    border-color: var(--color-save);
+    background: var(--color-card);
+  }
 
-.btn {
-  border-radius: 14px;
-  padding: 11px 18px;
-  font-size: 14px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #7b8cff 0%, #9aa5ff 100%);
-  color: #fff;
-  box-shadow: 0 6px 16px rgb(123 140 255 / 0.3);
-}
-.btn-ghost {
-  border-radius: 12px;
-  padding: 7px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  background: var(--color-card);
-  color: var(--color-ink);
-  box-shadow: var(--shadow-card);
-}
+  .btn {
+    border-radius: 14px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #7b8cff 0%, #9aa5ff 100%);
+    color: #fff;
+    box-shadow: 0 6px 16px rgb(123 140 255 / 0.3);
+  }
+  .btn-ghost {
+    border-radius: 12px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--color-card);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-card);
+  }
 
-:focus-visible {
-  outline: 2px solid var(--color-save);
-  outline-offset: 2px;
-}
 
-/* 장부 행: 왼쪽 항목, 오른쪽 금액 */
-.ledger > * + * {
-  border-top: 1px solid var(--color-line);
+  /* 장부 행: 왼쪽 항목, 오른쪽 금액 */
+  .ledger > * + * {
+    border-top: 1px solid var(--color-line);
+  }
 }
