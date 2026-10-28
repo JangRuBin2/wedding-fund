@@ -19,6 +19,12 @@ class PaymentListenerModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("PaymentListener")
 
+    // 앱 켤 때마다 팁 예약 확인 (이미 있으면 그대로)
+    OnCreate {
+      val ctx = appContext.reactContext ?: return@OnCreate
+      try { Tips.schedule(ctx) } catch (e: Exception) { android.util.Log.w("PaymentListener", "tip schedule failed", e) }
+    }
+
     Function("isPermissionGranted") {
       NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     }
@@ -62,6 +68,23 @@ class PaymentListenerModule : Module() {
       s.token = token
       s.memberName = memberName
       s.includeKakao = includeKakao
+      Tips.schedule(context)
+    }
+
+    Function("getTipsEnabled") { Store(context).tipsEnabled }
+
+    Function("setTipsEnabled") { enabled: Boolean ->
+      Store(context).tipsEnabled = enabled
+      Tips.reschedule(context)
+    }
+
+    /** 설정 화면의 '지금 하나 받아 보기' */
+    AsyncFunction("sendTipNow") {
+      try {
+        Tips.fetchAndNotify(context, force = true)
+      } catch (e: Exception) {
+        "팁을 받지 못했어요. ${e.message ?: e.javaClass.simpleName}"
+      }
     }
 
     Function("getLog") { Store(context).log().toString() }

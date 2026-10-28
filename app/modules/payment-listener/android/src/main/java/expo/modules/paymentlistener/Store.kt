@@ -27,6 +27,16 @@ class Store(context: Context) {
     get() = prefs.getBoolean("includeKakao", true)
     set(v) = prefs.edit().putBoolean("includeKakao", v).apply()
 
+  /** 매일 아침 '오늘의 팁' 알림 */
+  var tipsEnabled: Boolean
+    get() = prefs.getBoolean("tipsEnabled", true)
+    set(v) = prefs.edit().putBoolean("tipsEnabled", v).apply()
+
+  /** 마지막으로 팁을 띄운 날 (yyyy-MM-dd). 하루에 두 번 안 띄우게 */
+  var lastTipDay: String
+    get() = prefs.getString("lastTipDay", "") ?: ""
+    set(v) = prefs.edit().putString("lastTipDay", v).apply()
+
   val configured: Boolean get() = serverUrl.isNotEmpty() && token.isNotEmpty()
 
   fun queue(): JSONArray = synchronized(LOCK) { JSONArray(prefs.getString("queue", "[]") ?: "[]") }

@@ -22,6 +22,9 @@ type Native = {
   getQueueSize(): number;
   testConnection(): Promise<string>;
   flushQueue(): Promise<number>;
+  getTipsEnabled(): boolean;
+  setTipsEnabled(enabled: boolean): void;
+  sendTipNow(): Promise<string>;
 };
 
 const Native = requireNativeModule<Native>("PaymentListener");

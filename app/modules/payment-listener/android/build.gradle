@@ -16,4 +16,6 @@ android {
 
 dependencies {
   implementation "androidx.core:core-ktx:1.17.0"
+  // 매일 아침 팁 알림 (재부팅 후에도 예약 유지)
+  implementation "androidx.work:work-runtime-ktx:2.10.1"
 }

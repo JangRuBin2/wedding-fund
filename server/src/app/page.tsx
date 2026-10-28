@@ -10,6 +10,7 @@ import { CategoryBreakdown, DailyBars } from "@/components/Charts";
 import { TxRow } from "@/components/TxRow";
 import { Logo } from "@/components/Logo";
 import { PHOTOS, photoUrl } from "@/lib/photos";
+import { todayTip } from "@/lib/tips";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ function paceMessage(s: NonNullable<GoalStatus>) {
 export default async function Home() {
   const now = new Date();
   const monthStart = kstMonthStart(now);
-  const [status, living, history, recent, reviewCount, feedback, members, wedding] = await Promise.all([
+  const [status, living, history, recent, reviewCount, feedback, members, wedding, tip] = await Promise.all([
     getGoalStatus(now),
     expensesBetween(monthStart, kstMonthStart(now, 1), { living: true }),
     expensesBetween(kstMonthStart(now, -4), monthStart, { living: true }),
@@ -64,6 +65,7 @@ export default async function Home() {
     prisma.feedback.findFirst({ orderBy: { weekStart: "desc" } }),
     prisma.member.findMany({ include: { transactions: { where: { ...ACTIVE, occurredAt: { gte: monthStart } } } } }),
     weddingOverview(now),
+    todayTip(now),
   ]);
   const track = status ? await monthTrack(status, now) : [];
 
@@ -213,6 +215,19 @@ export default async function Home() {
           </Link>
         ))}
       </nav>
+
+      <section className="card flex gap-3 !py-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-spend-soft text-spend" aria-hidden>
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9V16h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z" />
+          </svg>
+        </span>
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold text-save">오늘의 팁 · {tip.cat}</p>
+          <p className="mt-0.5 text-[15px] leading-snug font-bold">{tip.title}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-sub">{tip.body}</p>
+        </div>
+      </section>
 
       {status && (
         <section className="card">

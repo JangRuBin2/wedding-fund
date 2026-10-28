@@ -275,6 +275,23 @@ export const WEDDING_TASK_SECTIONS = [
 ] as const;
 ```
 
+### 5-2-1. 행정·돈 챙길 것 칸 (`WEDDING_ADMIN_TASKS`)
+결혼과 같이 챙기면 돈이 되는 행정 항목이에요. 체크리스트에 '행정·혜택' 칸으로 넣고, 같은 내용은 매일 아침 '오늘의 팁' 알림(`server/src/lib/tips.ts`)에도 들어가 있어요.
+```ts
+export const WEDDING_ADMIN_TASKS = [
+  { stepKey: "s02", content: "하객 수 대략 정하기 (웨딩홀 보증인원·청첩장 수 기준)" },
+  { stepKey: "s03", content: "계약 전에 추가금 목록 받기 (원본·수정본·헬퍼비·연출료)" },
+  { stepKey: "s07", content: "두 사람 여권 만료일 확인" },
+  { stepKey: "s07", content: "회사 경조휴가 일수 확인" },
+  { stepKey: "s10", content: "혼인신고 시기 정하기 (결혼세액공제·신혼부부 대출·청약 자격 확인)" },
+  { stepKey: "s10", content: "신혼집 대출 비교 (버팀목·디딤돌 요건, 신용점수 확인)" },
+  { stepKey: "s14", content: "사회자·축가·축의대 사례 봉투 준비" },
+  { stepKey: "s18", content: "축의금 명단·금액 당일 정리" },
+  { stepKey: "s20", content: "전입신고·확정일자 (이사 당일)" },
+  { stepKey: "s20", content: "연말정산: 결혼세액공제, 의료비는 소득 적은 쪽으로" },
+] as const;
+```
+
 ### 5-3. 예산 묶음과 세부항목 (`WEDDING_GROUPS_V2`, `WEDDING_BUDGET_TEMPLATE`)
 금액 단위는 원이에요. `null`은 시트에서 비어 있는 칸이고, 금액이 하나만 적힌 항목은 최소와 최대에 같은 값을 넣었어요.
 ```ts

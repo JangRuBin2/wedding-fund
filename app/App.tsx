@@ -50,6 +50,8 @@ export default function App() {
   const saved = PaymentListener.getSettings();
   const configured = !!saved.serverUrl && !!saved.token;
   const [editing, setEditing] = useState(!configured);
+  const [tipsOn, setTipsOn] = useState(() => PaymentListener.getTipsEnabled());
+  const [tipMsg, setTipMsg] = useState("");
 
   const refresh = useCallback(() => {
     setGranted(PaymentListener.isPermissionGranted());
@@ -211,6 +213,37 @@ export default function App() {
         )}
         {!!msg && <Text style={[s.msg, { color: good(msg) ? c.save : c.spend }]}>{msg}</Text>}
       </Card>
+
+      {configured && (
+        <Card c={c}>
+          <View style={s.row}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[s.cardTitle, { color: c.ink }]}>매일 아침 오늘의 팁</Text>
+              <Text style={[s.hint, { color: c.sub }]}>아침 8시 반쯤 절세·자산관리·결혼 준비 팁을 하나씩 알려 드려요. 잔금 날짜가 가까우면 그걸 먼저 알려 드려요</Text>
+            </View>
+            <Switch
+              value={tipsOn}
+              onValueChange={(v) => {
+                setTipsOn(v);
+                PaymentListener.setTipsEnabled(v);
+              }}
+            />
+          </View>
+          {tipsOn && (
+            <Btn
+              c={c}
+              outline
+              onPress={async () => {
+                setTipMsg("팁을 가져오고 있어요…");
+                setTipMsg(await PaymentListener.sendTipNow());
+              }}
+            >
+              지금 하나 받아 보기
+            </Btn>
+          )}
+          {!!tipMsg && <Text style={[s.hint, { color: c.sub, textAlign: "center" }]}>{tipMsg}</Text>}
+        </Card>
+      )}
 
       <View>
         <Text style={[s.sectionTitle, { color: c.ink }]}>최근 보낸 결제</Text>

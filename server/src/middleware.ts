@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * 대시보드는 Basic Auth로 잠금 (아이디 아무거나, 비밀번호 = DASHBOARD_PASSWORD).
- * /api/ingest 와 /api/cron 은 각자 토큰으로 인증하므로 제외.
+ * /api/ingest, /api/tips, /api/cron 은 각자 토큰으로 인증하므로 제외.
  */
 export function middleware(req: NextRequest) {
   const password = process.env.DASHBOARD_PASSWORD;
@@ -27,5 +27,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/ingest|api/cron|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon|apple-icon|heart.svg|photos/|icon-.*\\.png).*)"],
+  matcher: ["/((?!api/ingest|api/cron|api/tips|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon|apple-icon|heart.svg|photos/|icon-.*\\.png).*)"],
 };
