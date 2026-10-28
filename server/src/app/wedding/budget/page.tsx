@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getGoalStatus } from "@/lib/goal";
-import { dueDateLabel, dueLabel, weddingOverview, WEDDING_GROUPS, WEDDING_SUGGESTIONS } from "@/lib/wedding";
+import { budgetUsage, dueDateLabel, dueLabel, weddingOverview, WEDDING_GROUPS, WEDDING_SUGGESTIONS } from "@/lib/wedding";
+import { BudgetPlanner } from "@/components/BudgetPlanner";
+import { UsageBar } from "@/components/UsageBar";
 import { manwon, toKst } from "@/lib/time";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WeddingHeader } from "@/components/WeddingTabs";
@@ -20,12 +22,55 @@ const dateInput = (d: Date | null) => (d ? toKst(d).toISOString().slice(0, 10) :
 
 export default async function WeddingBudgetPage() {
   const now = new Date();
-  const [w, status] = await Promise.all([weddingOverview(now), getGoalStatus(now)]);
+  const [w, status, usage] = await Promise.all([weddingOverview(now), getGoalStatus(now), budgetUsage()]);
   const gap = status ? status.goal.targetAmount - w.budget : 0;
 
   return (
     <main className="space-y-7">
       <WeddingHeader active="budget" daysLeft={status?.daysLeft} />
+
+      <section className="card">
+        <UsageBar rows={usage.rows} total={usage.total} />
+        {usage.total > 0 && (
+          <ul className="ledger mt-4 border-t border-line">
+            {usage.rows.map((r) => (
+              <li key={r.name} className="py-2.5">
+                <div className="flex items-baseline gap-2 text-[14px]">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.color }} />
+                  <span className="font-semibold">{r.name}</span>
+                  <span className={`num ml-auto ${r.over ? "font-bold text-spend" : "text-sub"}`}>
+                    {manwon(r.spent + r.planned)} / {manwon(r.budget)}원
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${r.budget ? Math.min(1, (r.spent + r.planned) / r.budget) * 100 : 0}%`, background: r.over ? "var(--color-spend)" : r.color }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {usage.spent + usage.planned === 0 && (
+          <p className="mt-3 text-[12px] text-sub">할 일 탭의 이벤트에서 결제를 기록하면 여기에 쌓여요</p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="section-title">
+          예산 나누기
+          <small>슬라이더로 조절, 잠그면 고정</small>
+        </h2>
+        <div className="card">
+          <BudgetPlanner initial={Object.fromEntries(usage.rows.map((r) => [r.name, r.budget]))} />
+        </div>
+      </section>
+
+      <h2 className="section-title">
+        세부 예산표
+        <small>항목별 예산·잔금 날짜</small>
+      </h2>
 
       {w.items.length === 0 ? (
         <section className="card space-y-4">

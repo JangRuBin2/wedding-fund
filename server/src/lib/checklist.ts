@@ -61,7 +61,10 @@ export const SUGGESTED_TASKS: { stepKey: string; section: string; content: strin
 export async function checklistOverview(now = new Date()) {
   const steps = await prisma.weddingStep.findMany({
     orderBy: { order: "asc" },
-    include: { tasks: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
+    include: {
+      tasks: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+      payments: { select: { amount: true, method: true } },
+    },
   });
   const done = steps.filter((s) => s.done).length;
   const daysUntil = (d: Date) => Math.ceil((d.getTime() - now.getTime()) / DAY);
@@ -79,4 +82,21 @@ export async function checklistOverview(now = new Date()) {
 
 export function suggestionsFor(stepKey: string | null) {
   return stepKey ? SUGGESTED_TASKS.filter((t) => t.stepKey === stepKey) : [];
+}
+
+/** 캘린더 한 달치: 이벤트 날짜, 할 일 소규모 일정, 결제(예정)일 */
+export async function calendarMonth(from: Date, to: Date) {
+  const range = { gte: from, lt: to };
+  const [steps, tasks, payments] = await Promise.all([
+    prisma.weddingStep.findMany({ where: { targetDate: range }, select: { id: true, title: true, targetDate: true, done: true } }),
+    prisma.weddingTask.findMany({
+      where: { dueDate: range },
+      select: { id: true, content: true, dueDate: true, done: true, step: { select: { id: true, title: true } } },
+    }),
+    prisma.weddingPayment.findMany({
+      where: { paidAt: range },
+      select: { id: true, content: true, amount: true, method: true, category: true, paidAt: true, stepId: true },
+    }),
+  ]);
+  return { steps, tasks, payments };
 }

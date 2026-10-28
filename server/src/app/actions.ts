@@ -1,17 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { normalizeMerchant } from "@/lib/parser";
 import { generateWeeklyFeedback } from "@/lib/feedback";
 import { WEDDING_GROUPS, WEDDING_TEMPLATE, weddingOverview } from "@/lib/wedding";
 import { SUGGESTED_TASKS, WEDDING_STEPS } from "@/lib/checklist";
+import { PAY_METHODS, PAYERS, WEDDING_CATEGORIES } from "@/lib/wedding-meta";
 import { getMe, ME_COOKIE } from "@/lib/me";
 import { cookies } from "next/headers";
 import { categorizeByRules, SAVINGS_CATEGORY, statusForCategory } from "@/lib/categories";
 
 function refresh() {
-  for (const p of ["/", "/transactions", "/wedding", "/wedding/budget", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
+  for (const p of ["/", "/transactions", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
+  revalidatePath("/wedding", "layout"); // 할 일·예산·이벤트 세부 전부
 }
 
 /** 카테고리/가맹점/상태 수정. learn=on이면 같은 가맹점 과거·미래 건 모두 이 카테고리로 */
@@ -266,13 +269,14 @@ export async function addWeddingStep(form: FormData) {
 export async function deleteWeddingStep(id: string) {
   await prisma.weddingStep.delete({ where: { id } });
   refresh();
+  redirect("/wedding"); // 세부 화면에서 지웠으면 목록으로
 }
 
 export async function addTask(form: FormData) {
   const stepId = String(form.get("stepId"));
   const content = String(form.get("content") || "").trim();
   if (!content) return;
-  await prisma.weddingTask.create({ data: { stepId, content, createdBy: await getMe() } });
+  await prisma.weddingTask.create({ data: { stepId, content, dueDate: dateOrNull(form.get("dueDate")), createdBy: await getMe() } });
   refresh();
 }
 
@@ -334,5 +338,66 @@ export async function saveProfile(form: FormData) {
     married: tri("married"),
   };
   await prisma.profile.upsert({ where: { name }, create: { name, ...data }, update: data });
+  refresh();
+}
+
+// ── 이벤트 세부: 할 일 날짜, 메모, 결제관리 ──
+
+export async function setTaskDate(form: FormData) {
+  await prisma.weddingTask.update({ where: { id: String(form.get("id")) }, data: { dueDate: dateOrNull(form.get("dueDate")) } });
+  refresh();
+}
+
+export async function saveStepMemo(form: FormData) {
+  await prisma.weddingStep.update({
+    where: { id: String(form.get("id")) },
+    data: { note: String(form.get("note") || "").trim().slice(0, 5000) || null },
+  });
+  refresh();
+}
+
+const oneOf = <T extends string>(v: FormDataEntryValue | null, keys: readonly T[], fallback: T): T =>
+  (keys as readonly string[]).includes(String(v)) ? (String(v) as T) : fallback;
+const CATEGORY_NAMES = WEDDING_CATEGORIES.map((c) => c.name);
+
+export async function addPayment(form: FormData) {
+  const content = String(form.get("content") || "").trim();
+  const amount = won(form.get("amount"));
+  if (!content || !amount) return;
+  const payer = oneOf(form.get("payer"), Object.keys(PAYERS) as (keyof typeof PAYERS)[], "GROOM");
+  await prisma.weddingPayment.create({
+    data: {
+      stepId: String(form.get("stepId") || "") || null,
+      category: oneOf(form.get("category"), CATEGORY_NAMES, "기타"),
+      content: content.slice(0, 100),
+      amount,
+      method: oneOf(form.get("method"), Object.keys(PAY_METHODS) as (keyof typeof PAY_METHODS)[], "CARD"),
+      payer,
+      payerNote: payer === "OTHER" ? String(form.get("payerNote") || "").trim().slice(0, 30) || null : null,
+      paidAt: dateOrNull(form.get("paidAt")),
+      createdBy: await getMe(),
+    },
+  });
+  refresh();
+}
+
+/** 결제 예정 → 냈어요 (카드로 표시, 날짜는 오늘) */
+export async function markPaymentPaid(id: string) {
+  await prisma.weddingPayment.update({ where: { id }, data: { method: "CARD", paidAt: new Date() } });
+  refresh();
+}
+
+export async function deletePayment(id: string) {
+  await prisma.weddingPayment.delete({ where: { id } });
+  refresh();
+}
+
+/** 예산 배분 저장 (예산 탭의 슬라이더). 금액은 원 단위 */
+export async function saveBudgetPlan(alloc: Record<string, number>) {
+  const ops = CATEGORY_NAMES.map((category) => {
+    const amount = Math.max(0, Math.min(10_000_000_000, Math.round(Number(alloc[category]) || 0)));
+    return prisma.weddingBudget.upsert({ where: { category }, create: { category, amount }, update: { amount } });
+  });
+  await prisma.$transaction(ops);
   refresh();
 }

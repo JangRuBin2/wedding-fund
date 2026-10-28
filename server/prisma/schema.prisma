@@ -101,7 +101,7 @@ model WeddingItem {
   updatedAt DateTime  @updatedAt
 }
 
-/// 결혼 준비 단계 (시트의 '전체 흐름' 20단계)
+/// 결혼 준비 이벤트 (시트의 '전체 흐름' 20단계 + 직접 추가). 체크리스트·메모·결제를 묶는 큰 카테고리
 model WeddingStep {
   id          String        @id @default(cuid())
   order       Int
@@ -118,6 +118,7 @@ model WeddingStep {
   /// 템플릿을 여러 번 불러와도 중복되지 않게
   templateKey String?       @unique
   tasks       WeddingTask[]
+  payments    WeddingPayment[]
 }
 
 /// 단계 안의 세부 할 일
@@ -128,6 +129,8 @@ model WeddingTask {
   /// 시트의 세부 칸 이름 (상견례 / 드레스 피팅 / 행정·혜택 …)
   section   String?
   content   String
+  /// 소규모 일정 (예: 촬영용 옷 구매 10월 3일). 캘린더에 같이 보임
+  dueDate   DateTime?
   done      Boolean     @default(false)
   doneAt    DateTime?
   doneBy    String?
@@ -153,4 +156,35 @@ model Profile {
   /// 혼인신고 했는지
   married            Boolean?
   updatedAt          DateTime @updatedAt
+}
+
+/// 이벤트별 결제 기록 (예산 구분 = WeddingBudget.category 와 같은 이름)
+model WeddingPayment {
+  id        String       @id @default(cuid())
+  step      WeddingStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+  stepId    String?
+  /// 예식 | 스드메 | 예물·예단 | 신혼여행 | 신혼집·혼수 | 기타
+  category  String
+  content   String
+  amount    Int
+  /// CARD | CASH | PLANNED(결제 예정)
+  method    String       @default("CARD")
+  /// GROOM | BRIDE | OTHER
+  payer     String       @default("GROOM")
+  /// 결제자가 기타일 때 (예: 부모님)
+  payerNote String?
+  /// 결제한 날, 결제 예정이면 예정일
+  paidAt    DateTime?
+  createdBy String?
+  createdAt DateTime     @default(now())
+
+  @@index([stepId])
+  @@index([category])
+}
+
+/// 예산 구분별 배분액. 합계가 결혼 총예산
+model WeddingBudget {
+  category  String   @id
+  amount    Int      @default(0)
+  updatedAt DateTime @updatedAt
 }

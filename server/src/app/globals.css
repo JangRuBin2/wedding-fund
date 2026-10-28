@@ -178,6 +178,38 @@
   }
 
 
+  /* 색 슬라이더 (예산 배분). --c: 구분 색, --p: 채운 비율 */
+  .range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--c) var(--p), var(--color-paper) var(--p));
+    cursor: pointer;
+  }
+  .range:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 4px solid var(--c);
+    box-shadow: 0 2px 8px rgb(31 41 55 / 0.2);
+  }
+  .range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 4px solid var(--c);
+    box-shadow: 0 2px 8px rgb(31 41 55 / 0.2);
+  }
+
   /* 장부 행: 왼쪽 항목, 오른쪽 금액 */
   .ledger > * + * {
     border-top: 1px solid var(--color-line);
