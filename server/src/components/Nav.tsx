@@ -30,6 +30,7 @@ const TABS = [
 
 export function Nav() {
   const path = usePathname();
+  if (path.startsWith("/login")) return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 px-3 pb-[calc(env(safe-area-inset-bottom)+10px)] md:sticky md:top-0 md:bottom-auto md:pt-3 md:pb-0">
       <ul className="mx-auto grid max-w-xl grid-cols-5 rounded-[22px] border border-white/60 bg-card/85 p-1 shadow-[0_8px_28px_rgb(123_140_255/0.18)] backdrop-blur-md dark:border-white/5">

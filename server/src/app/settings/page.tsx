@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { fmtKst, toKst } from "@/lib/time";
-import { deleteRule, saveGoal, saveProfile, setMe } from "../actions";
-import { getMe } from "@/lib/me";
+import { deleteRule, renameUser, saveGoal, saveProfile, setMe, setUserStatus } from "../actions";
+import { currentSession, getMe } from "@/lib/me";
+import { kakaoEnabled } from "@/lib/session";
 import { colorOf } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,10 @@ export default async function Settings() {
     prisma.profile.findMany(),
     getMe(),
   ]);
+  const kakao = kakaoEnabled();
+  const session = kakao ? await currentSession() : null;
+  const users = kakao ? await prisma.user.findMany({ orderBy: { createdAt: "asc" } }) : [];
+  const isOwner = users.some((u) => u.id === session?.uid && u.role === "OWNER");
   const triValue = (v: boolean | null | undefined) => (v === true ? "yes" : v === false ? "no" : "");
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
@@ -62,7 +67,55 @@ export default async function Settings() {
         </form>
       </section>
 
-      {members.length > 0 && (
+      {kakao ? (
+        <section>
+          <h2 className="section-title">
+            로그인 계정
+            <a href="/api/auth/logout" className="text-[13px] font-semibold text-sub">로그아웃</a>
+          </h2>
+          <ul className="card ledger !py-1">
+            {users
+              .filter((u) => isOwner || u.id === session?.uid)
+              .map((u) => (
+                <li key={u.id} className="space-y-2 py-3">
+                  <div className="flex items-center gap-2 text-[14px]">
+                    <span className="font-semibold">{u.name}</span>
+                    {u.nickname && u.nickname !== u.name && <span className="text-[12px] text-sub">카카오 {u.nickname}</span>}
+                    {u.role === "OWNER" && <span className="rounded-md bg-save-soft px-1.5 py-0.5 text-[10px] font-bold text-save">관리자</span>}
+                    {u.status === "PENDING" && <span className="rounded-md bg-spend-soft px-1.5 py-0.5 text-[10px] font-bold text-spend">승인 대기</span>}
+                    {u.status === "REJECTED" && <span className="rounded-md bg-paper px-1.5 py-0.5 text-[10px] font-bold text-sub">막음</span>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <form action={renameUser} className="flex flex-1 gap-2">
+                      <input type="hidden" name="id" value={u.id} />
+                      <input name="name" defaultValue={u.name} list="member-names" aria-label="이름" className="input !py-1.5 text-[14px]" />
+                      <button className="btn-ghost shrink-0 !bg-paper">이름 저장</button>
+                    </form>
+                    {isOwner && u.id !== session?.uid && u.status !== "APPROVED" && (
+                      <form action={setUserStatus.bind(null, u.id, "APPROVED")}>
+                        <button className="btn-ghost !bg-save !text-white">승인</button>
+                      </form>
+                    )}
+                    {isOwner && u.id !== session?.uid && u.status !== "REJECTED" && (
+                      <form action={setUserStatus.bind(null, u.id, "REJECTED")}>
+                        <button className="btn-ghost !text-spend">{u.status === "PENDING" ? "거절" : "막기"}</button>
+                      </form>
+                    )}
+                  </div>
+                </li>
+              ))}
+          </ul>
+          <datalist id="member-names">
+            {members.map((m) => (
+              <option key={m.id} value={m.name} />
+            ))}
+          </datalist>
+          <p className="mt-2 px-1 text-[12px] leading-relaxed text-sub">
+            이름을 폰 앱에 입력한 이름({members.map((m) => m.name).join(", ") || "아직 없음"})과 같게 맞추면 체크 기록과 팁 맞춤이 이어져요
+          </p>
+        </section>
+      ) : (
+        members.length > 0 && (
         <section>
           <h2 className="section-title">
             이 기기는 누구
@@ -82,6 +135,7 @@ export default async function Settings() {
             ))}
           </form>
         </section>
+        )
       )}
 
       {members.length > 0 && (

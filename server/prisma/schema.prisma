@@ -188,3 +188,18 @@ model WeddingBudget {
   amount    Int      @default(0)
   updatedAt DateTime @updatedAt
 }
+
+/// 카카오로 로그인한 사람. 처음 로그인한 사람이 OWNER, 그다음부터는 OWNER가 승인해야 들어올 수 있음
+model User {
+  id          String    @id @default(cuid())
+  kakaoId     String    @unique
+  nickname    String?
+  /// 대시보드에서 쓰는 이름. 폰 앱에 입력한 이름(Member.name)과 같게 맞추면 체크 기록·팁 맞춤이 이어짐
+  name        String
+  /// OWNER | MEMBER
+  role        String    @default("MEMBER")
+  /// APPROVED | PENDING | REJECTED
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+}

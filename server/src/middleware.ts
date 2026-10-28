@@ -1,10 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { kakaoEnabled, readSession, SESSION_COOKIE } from "@/lib/session";
 
 /**
- * 대시보드는 Basic Auth로 잠금 (아이디 아무거나, 비밀번호 = DASHBOARD_PASSWORD).
+ * 대시보드 잠금.
+ * - KAKAO_REST_API_KEY 가 있으면 카카오 로그인 (승인된 사람만)
+ * - 없으면 예전처럼 Basic Auth (아이디 아무거나, 비밀번호 = DASHBOARD_PASSWORD)
  * /api/ingest, /api/tips, /api/cron 은 각자 토큰으로 인증하므로 제외.
  */
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
+  if (kakaoEnabled()) return kakao(req);
+
   const password = process.env.DASHBOARD_PASSWORD;
   if (!password) return NextResponse.next();
 
@@ -24,6 +29,19 @@ export function middleware(req: NextRequest) {
     status: 401,
     headers: { "WWW-Authenticate": 'Basic realm="wedding-fund", charset="UTF-8"' },
   });
+}
+
+async function kakao(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  if (path === "/login" || path.startsWith("/api/auth/")) return NextResponse.next();
+  const s = await readSession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!s) {
+    const to = new URL("/login", req.url);
+    if (path !== "/") to.searchParams.set("next", path);
+    return NextResponse.redirect(to);
+  }
+  if (s.status !== "APPROVED") return path === "/login/pending" ? NextResponse.next() : NextResponse.redirect(new URL("/login/pending", req.url));
+  return NextResponse.next();
 }
 
 export const config = {

@@ -5,6 +5,7 @@ import { calendarMonth, checklistOverview } from "@/lib/checklist";
 import { dueDateLabel, dueLabel } from "@/lib/wedding";
 import { categoryColor } from "@/lib/wedding-meta";
 import { getMe } from "@/lib/me";
+import { kakaoEnabled } from "@/lib/session";
 import { kstMonthStart, kstParts, manwon, DAY } from "@/lib/time";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WeddingHeader } from "@/components/WeddingTabs";
@@ -103,7 +104,7 @@ export default async function WeddingTodoPage({ searchParams }: { searchParams: 
                 </Link>
               ))}
             </div>
-            {me && (
+            {me && !kakaoEnabled() && (
               <form action={setMe}>
                 <button name="name" value="" className="text-[12px] font-medium text-sub">
                   {me}님으로 기록 중 · 바꾸기

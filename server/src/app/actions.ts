@@ -8,7 +8,7 @@ import { generateWeeklyFeedback } from "@/lib/feedback";
 import { WEDDING_GROUPS, WEDDING_TEMPLATE, weddingOverview } from "@/lib/wedding";
 import { SUGGESTED_TASKS, WEDDING_STEPS } from "@/lib/checklist";
 import { PAY_METHODS, PAYERS, WEDDING_CATEGORIES } from "@/lib/wedding-meta";
-import { getMe, ME_COOKIE } from "@/lib/me";
+import { currentSession, getMe, ME_COOKIE } from "@/lib/me";
 import { cookies } from "next/headers";
 import { categorizeByRules, SAVINGS_CATEGORY, statusForCategory } from "@/lib/categories";
 
@@ -400,4 +400,34 @@ export async function saveBudgetPlan(alloc: Record<string, number>) {
   });
   await prisma.$transaction(ops);
   refresh();
+}
+
+// ── 카카오 로그인 사용자 관리 ──
+
+/** 관리자만. 쿠키는 위조 못 하지만 역할이 바뀌었을 수 있어서 DB로 한 번 더 확인 */
+async function requireOwner() {
+  const s = await currentSession();
+  const me = s && (await prisma.user.findUnique({ where: { id: s.uid } }));
+  if (!me || me.role !== "OWNER" || me.status !== "APPROVED") throw new Error("관리자만 할 수 있어요");
+  return me;
+}
+
+export async function setUserStatus(id: string, status: "APPROVED" | "REJECTED") {
+  const owner = await requireOwner();
+  if (id === owner.id) return; // 자기 자신은 못 막음
+  await prisma.user.update({ where: { id }, data: { status } });
+  refresh();
+}
+
+/** 이름 바꾸기 (본인 또는 관리자). 폰 앱 이름과 맞추면 체크 기록·팁 맞춤이 이어짐 */
+export async function renameUser(form: FormData) {
+  const s = await currentSession();
+  const id = String(form.get("id"));
+  const name = String(form.get("name") || "").trim().slice(0, 30);
+  if (!s || !name) return;
+  if (id !== s.uid) await requireOwner();
+  await prisma.user.update({ where: { id }, data: { name } });
+  refresh();
+  // 본인 이름이면 세션 쿠키도 새 이름으로
+  if (id === s.uid) redirect("/api/auth/refresh");
 }
