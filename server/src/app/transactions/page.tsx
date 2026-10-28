@@ -9,13 +9,13 @@ import { addManual, deleteTransaction, setStatus, updateTransaction } from "../a
 export const dynamic = "force-dynamic";
 
 type Param = string | string[] | undefined;
-type SP = Promise<{ month?: Param; status?: Param; type?: Param; q?: Param; view?: Param }>;
+type SP = Promise<{ month?: Param; status?: Param; type?: Param; q?: Param; view?: Param; add?: Param }>;
 
 export default async function Transactions({ searchParams }: { searchParams: SP }) {
   const raw = await searchParams;
   // ?q=a&q=b 처럼 배열로 오거나 형식이 틀린 값은 무시
   const one = (v: unknown) => (typeof v === "string" ? v : undefined);
-  const sp = { month: one(raw.month), status: one(raw.status), type: one(raw.type), q: one(raw.q), view: one(raw.view) };
+  const sp = { month: one(raw.month), status: one(raw.status), type: one(raw.type), q: one(raw.q), view: one(raw.view), add: one(raw.add) };
   const now = new Date();
   const base = sp.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month) ? new Date(`${sp.month}-15T00:00:00+09:00`) : now;
   const from = kstMonthStart(base);
@@ -103,7 +103,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
         <button className="btn shrink-0">검색</button>
       </form>
 
-      <details className="card group">
+      <details className="card group" open={!!sp.add}>
         <summary className="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
           <span>직접 입력</span>
           <span className="text-[13px] font-medium text-sub group-open:hidden">현금이나 월급처럼 알림이 오지 않는 내역</span>

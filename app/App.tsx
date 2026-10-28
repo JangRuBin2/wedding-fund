@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   AppState,
+  Image,
   Linking,
   PermissionsAndroid,
   Platform,
@@ -14,6 +15,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { PaymentListener, type ListenerSettings, type LogEntry } from "./modules/payment-listener";
 
 /** 서버 응답/전송 결과 코드를 사람 말로 */
@@ -118,14 +120,22 @@ export default function App() {
               body: lastSent ? `마지막 전송 ${ago(lastSent.at)}` : "카드로 결제하면 여기에 기록이 표시돼요",
               tone: "ok",
             };
-  const toneColor = state.tone === "ok" ? c.save : state.tone === "warn" ? c.warn : c.spend;
+  const toneColor = state.tone === "ok" ? "#ffffff" : state.tone === "warn" ? c.warn : c.spend;
 
   return (
     <ScrollView style={{ backgroundColor: c.bg }} contentContainerStyle={s.wrap}>
       <StatusBar style={dark ? "light" : "dark"} />
-      <Text style={[s.brand, { color: c.sub }]}>결혼자금</Text>
+      <View style={[s.row, { gap: 10, paddingHorizontal: 4 }]}>
+        <View style={[s.logo, { backgroundColor: c.card }]}>
+          <Image source={require("./assets/adaptive-icon.png")} style={{ width: 64, height: 64 }} />
+        </View>
+        <View>
+          <Text style={[s.brand, { color: c.ink }]}>모아봄</Text>
+          <Text style={{ color: c.sub, fontSize: 12 }}>함께 모으는 우리의 봄</Text>
+        </View>
+      </View>
 
-      <View style={[s.hero, { backgroundColor: c.cover }]}>
+      <LinearGradient colors={c.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
         <View style={s.row}>
           <View style={[s.dot, { backgroundColor: toneColor }]} />
           <Text style={[s.heroTitle, { color: c.coverInk }]}>{state.title}</Text>
@@ -154,7 +164,7 @@ export default function App() {
             대시보드 열기
           </Btn>
         )}
-      </View>
+      </LinearGradient>
 
       {granted && !battery && (
         <Card c={c}>
@@ -283,8 +293,8 @@ function Btn({
   onCover?: boolean;
   disabled?: boolean;
 }) {
-  const bg = onCover ? c.coverInk : outline ? c.bg : c.ink;
-  const fg = onCover ? c.cover : outline ? c.ink : c.card;
+  const bg = onCover ? "rgba(255,255,255,0.92)" : outline ? c.soft : c.save;
+  const fg = onCover ? c.save : outline ? c.save : "#ffffff";
   return (
     <Pressable
       onPress={onPress}
@@ -297,50 +307,53 @@ function Btn({
   );
 }
 
-// 대시보드와 같은 통장 톤 (차가운 종이 + 남색 표지, 입금 파랑 / 출금 빨강)
+// 대시보드와 같은 모아봄 톤 (라벤더 종이 + 페리윙클·핑크 그라데이션, 입금 페리윙클 / 지출 로즈)
 const LIGHT = {
-  bg: "#edf0f4",
+  bg: "#f3f4fb",
   card: "#ffffff",
-  ink: "#142033",
-  sub: "#5f6b7a",
-  faint: "#8a95a3",
-  line: "#dde2e9",
-  save: "#1f5fd1",
-  spend: "#d43c4c",
-  warn: "#b7791f",
-  cover: "#17284a",
-  coverInk: "#f3f6fb",
-  coverSub: "#9fb0cc",
+  soft: "#e8ecff",
+  ink: "#1f2937",
+  sub: "#6b7280",
+  faint: "#9ca3af",
+  line: "#eceef7",
+  save: "#6170f0",
+  spend: "#e0578a",
+  warn: "#c2841a",
+  hero: ["#8b98ff", "#a99ff6", "#f3b3d6"] as [string, string, string],
+  coverInk: "#ffffff",
+  coverSub: "rgba(255,255,255,0.85)",
 };
 const DARK: Colors = {
-  bg: "#0e131a",
-  card: "#171d26",
-  ink: "#e8edf3",
-  sub: "#96a2b2",
-  faint: "#6b7686",
-  line: "#263040",
-  save: "#6f9dff",
-  spend: "#ff6b78",
-  warn: "#e0a84a",
-  cover: "#1b2a47",
-  coverInk: "#eef2f8",
-  coverSub: "#8fa1c0",
+  bg: "#12131c",
+  card: "#1c1e2b",
+  soft: "#262b4a",
+  ink: "#eef0f8",
+  sub: "#a3a8be",
+  faint: "#6e7390",
+  line: "#2a2d3f",
+  save: "#97a3ff",
+  spend: "#ff8db7",
+  warn: "#e8b05a",
+  hero: ["#4d58bd", "#6a5aae", "#a0628c"],
+  coverInk: "#ffffff",
+  coverSub: "rgba(255,255,255,0.8)",
 };
 
 const s = StyleSheet.create({
   wrap: { padding: 16, paddingTop: 52, paddingBottom: 40, gap: 14 },
-  brand: { fontSize: 15, fontWeight: "700", paddingHorizontal: 4 },
-  hero: { borderRadius: 20, padding: 20, gap: 8 },
+  brand: { fontSize: 19, fontWeight: "800" },
+  logo: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", overflow: "hidden", elevation: 2 },
+  hero: { borderRadius: 24, padding: 20, gap: 8, elevation: 6, shadowColor: "#7b8cff", shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
   heroTitle: { fontSize: 21, fontWeight: "800", flexShrink: 1 },
   heroBody: { fontSize: 14, lineHeight: 20, marginBottom: 6 },
   dot: { width: 9, height: 9, borderRadius: 5, marginRight: 10 },
-  card: { borderRadius: 16, padding: 16, gap: 8 },
+  card: { borderRadius: 20, padding: 16, gap: 8, elevation: 1, shadowColor: "#7b8cff", shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   cardTitle: { fontSize: 16, fontWeight: "700" },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 8, paddingHorizontal: 4 },
   hint: { fontSize: 12, lineHeight: 18 },
-  input: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15 },
+  input: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15 },
   row: { flexDirection: "row", alignItems: "center" },
-  btn: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  btn: { borderRadius: 14, paddingVertical: 14, alignItems: "center" },
   msg: { fontWeight: "700", textAlign: "center", marginTop: 4 },
   logRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
 });

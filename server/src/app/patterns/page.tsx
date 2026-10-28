@@ -33,13 +33,13 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
     <main className="space-y-7">
       <header className="flex items-center justify-between">
         <h1 className="text-[22px] font-bold">소비 분석</h1>
-        <div className="flex rounded-[10px] bg-card p-1" role="tablist" aria-label="기간">
+        <div className="flex rounded-[14px] bg-card p-1 shadow-[var(--shadow-card)]" role="tablist" aria-label="기간">
           {[30, 90, 180].map((d) => (
             <a
               key={d}
               href={`/patterns?days=${d}`}
               aria-current={d === days ? "page" : undefined}
-              className={`num rounded-[7px] px-3 py-1.5 text-[13px] font-semibold ${d === days ? "bg-ink text-card" : "text-sub"}`}
+              className={`num rounded-[10px] px-3 py-1.5 text-[13px] font-semibold ${d === days ? "bg-save text-white shadow-sm" : "text-sub"}`}
             >
               {d}일
             </a>
@@ -47,7 +47,7 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
         </div>
       </header>
 
-      <Link href="/feedback" className="flex items-center justify-between rounded-2xl border-l-4 border-save bg-card px-4 py-3.5">
+      <Link href="/feedback" className="flex items-center justify-between rounded-[20px] border-l-4 border-save bg-card px-4 py-3.5 shadow-[var(--shadow-card)]">
         <span>
           <span className="block text-[15px] font-semibold">주간 피드백</span>
           <span className="block text-[12px] text-sub">지난주 소비를 AI가 짚어 드려요</span>
@@ -153,7 +153,7 @@ export default async function Patterns({ searchParams }: { searchParams: Promise
                 <span className="num font-semibold">{m.amount.toLocaleString("ko-KR")}원 <span className="font-normal text-sub">{m.count}회</span></span>
               </div>
               <div className="mt-1.5 h-1.5 rounded-full bg-paper">
-                <div className="h-full rounded-full bg-ink/70" style={{ width: `${(m.amount / (merchants[0]?.amount || 1)) * 100}%` }} />
+                <div className="h-full rounded-full bg-save/70" style={{ width: `${(m.amount / (merchants[0]?.amount || 1)) * 100}%` }} />
               </div>
             </li>
           ))}

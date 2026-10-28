@@ -8,6 +8,7 @@ import { dueLabel, weddingOverview } from "@/lib/wedding";
 import { kstMonthStart, kstParts, manwon, monthKey, DAY } from "@/lib/time";
 import { CategoryBreakdown, DailyBars } from "@/components/Charts";
 import { TxRow } from "@/components/TxRow";
+import { Logo } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -109,27 +110,48 @@ export default async function Home() {
         </Link>
       )}
 
-      {status ? (
-        <section className="rounded-[20px] bg-cover p-5 text-cover-ink">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[15px] font-semibold text-cover-sub">{status.goal.title}</p>
-            <p className="num text-[15px] font-bold">D-{status.daysLeft}</p>
-          </div>
-          <p className="num mt-3 text-[40px] leading-none font-extrabold">
-            {manwon(status.progressAmount)}
-            <span className="ml-0.5 text-[24px] font-bold">원</span>
-          </p>
-          <p className="mt-2 text-[14px] text-cover-sub">
-            <span className="num">{manwon(status.goal.targetAmount)}원</span> 중{" "}
-            <b className="num text-cover-ink">{Math.floor(status.progress * 100)}%</b> 모았어요
-          </p>
-          {status.weddingSpent > 0 && (
-            <p className="num mt-1 text-[12px] text-cover-sub">
-              통장 {manwon(status.balance)}원 + 결혼 준비에 쓴 {manwon(status.weddingSpent)}원
-            </p>
-          )}
+      <header className="flex items-center gap-2.5 px-1">
+        <Logo />
+        <div>
+          <p className="text-[19px] leading-tight font-extrabold">모아봄</p>
+          <p className="text-[12px] text-sub">함께 모으는 우리의 봄</p>
+        </div>
+      </header>
 
-          <div className="mt-6">
+      {status ? (
+        <section className="hero p-5">
+          <p className="text-[19px] leading-snug font-bold">
+            우리의 {status.goal.title.replace(/자금$/, "")}까지
+            <br />
+            {status.remaining === 0 ? "다 모았어요, 축하해요" : "조금만 더, 함께해요"}
+          </p>
+
+          <div className="glass mt-4 p-4">
+            <div className="flex items-baseline justify-between text-[13px] text-cover-sub">
+              <span>목표 금액</span>
+              <span className="num font-semibold text-cover-ink">{manwon(status.goal.targetAmount)}원</span>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] text-cover-sub">지금까지 모은 돈</p>
+                <p className="num mt-1 text-[34px] leading-none font-extrabold">
+                  {manwon(status.progressAmount)}
+                  <span className="ml-0.5 text-[20px] font-bold">원</span>
+                </p>
+              </div>
+              <Ring value={status.progress} />
+            </div>
+            <p className="num mt-3 border-t border-cover-line pt-3 text-[13px] text-cover-sub">
+              남은 금액 {manwon(status.remaining)}원 <span className="mx-1.5 opacity-60">|</span> D-{status.daysLeft}
+            </p>
+            {status.weddingSpent > 0 && (
+              <p className="num mt-1 text-[12px] text-cover-sub">
+                통장 {manwon(status.balance)}원 + 결혼 준비에 쓴 {manwon(status.weddingSpent)}원
+              </p>
+            )}
+          </div>
+
+          <div className="mt-5">
             <div className="mb-2 flex items-baseline justify-between text-[12px] text-cover-sub">
               <span>월별 저축</span>
               <span className="num">한 칸 기준 {manwon(baseline)}원</span>
@@ -142,11 +164,11 @@ export default async function Home() {
                   <div
                     key={c.key}
                     title={c.net == null ? `${c.year}.${c.label}` : `${c.year}.${c.label} 저축 ${manwon(c.net)}원`}
-                    className={`relative h-full flex-1 overflow-hidden rounded-[4px] ${c.current ? "ring-1 ring-cover-ink" : ""} ${
+                    className={`relative h-full flex-1 overflow-hidden rounded-[5px] ${c.current ? "ring-1 ring-cover-ink" : ""} ${
                       neg ? "bg-spend/70" : "bg-cover-line"
                     }`}
                   >
-                    {!neg && <span className="absolute inset-x-0 bottom-0 bg-save" style={{ height: `${ratio * 100}%` }} />}
+                    {!neg && <span className="absolute inset-x-0 bottom-0 bg-white/90" style={{ height: `${ratio * 100}%` }} />}
                   </div>
                 );
               })}
@@ -162,18 +184,29 @@ export default async function Home() {
           </div>
 
           {pace && (
-            <p className="mt-5 flex items-start gap-2 border-t border-cover-line pt-4 text-[14px] leading-snug">
-              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${pace.ok ? "bg-save" : "bg-spend"}`} />
+            <p className="mt-4 flex items-start gap-2 border-t border-cover-line pt-4 text-[14px] leading-snug">
+              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${pace.ok ? "bg-white" : "bg-spend"}`} />
               {pace.text}
             </p>
           )}
         </section>
       ) : (
-        <Link href="/settings" className="block rounded-[20px] bg-cover p-6 text-cover-ink">
+        <Link href="/settings" className="hero block p-6">
           <p className="text-lg font-bold">목표부터 정해 볼까요?</p>
           <p className="mt-1 text-sm text-cover-sub">목표 금액과 날짜를 입력하시면 매달 얼마씩 모으면 되는지 계산해 드릴게요</p>
         </Link>
       )}
+
+      <nav className="grid grid-cols-4 gap-2" aria-label="바로가기">
+        {QUICK.map((q) => (
+          <Link key={q.href} href={q.href} className="card flex flex-col items-center gap-1.5 !px-1 !py-3 text-[12px] font-semibold text-sub">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl text-[17px]" style={{ background: q.bg }} aria-hidden>
+              {q.icon}
+            </span>
+            {q.label}
+          </Link>
+        ))}
+      </nav>
 
       {status && (
         <section className="card">
@@ -346,7 +379,7 @@ export default async function Home() {
       )}
 
       {feedback && (
-        <Link href="/feedback" className="block rounded-2xl border-l-4 border-save bg-card px-4 py-3.5">
+        <Link href="/feedback" className="block rounded-[20px] border-l-4 border-save bg-card px-4 py-3.5 shadow-[var(--shadow-card)]">
           <p className="text-[12px] font-semibold text-save">지난주 코멘트</p>
           <p className="mt-1 text-[15px] leading-snug font-semibold">{feedback.content.split("\n")[0]}</p>
         </Link>
@@ -372,6 +405,39 @@ export default async function Home() {
         </div>
       </section>
     </main>
+  );
+}
+
+const QUICK = [
+  { href: "/transactions?add=1", label: "직접 기록", icon: "✏️", bg: "var(--color-save-soft)" },
+  { href: "/transactions", label: "내역 보기", icon: "🧾", bg: "var(--color-spend-soft)" },
+  { href: "/wedding", label: "결혼 준비", icon: "💍", bg: "var(--color-save-soft)" },
+  { href: "/settings", label: "목표 설정", icon: "🎯", bg: "var(--color-spend-soft)" },
+];
+
+/** 진행률 링 */
+function Ring({ value }: { value: number }) {
+  const r = 30;
+  const len = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(1, value));
+  return (
+    <svg viewBox="0 0 76 76" width="76" height="76" className="shrink-0" role="img" aria-label={`${Math.floor(v * 100)}% 모았어요`}>
+      <circle cx="38" cy="38" r={r} fill="none" stroke="rgb(255 255 255 / 0.28)" strokeWidth="7" />
+      <circle
+        cx="38"
+        cy="38"
+        r={r}
+        fill="none"
+        stroke="#fff"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={`${len * v} ${len}`}
+        transform="rotate(-90 38 38)"
+      />
+      <text x="38" y="43" textAnchor="middle" className="num" fill="#fff" fontSize="15" fontWeight="800">
+        {Math.floor(v * 100)}%
+      </text>
+    </svg>
   );
 }
 

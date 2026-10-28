@@ -10,7 +10,7 @@ const tooltipProps = {
   contentStyle: {
     background: "var(--color-card)",
     border: "1px solid var(--color-line)",
-    borderRadius: 10,
+    borderRadius: 12,
     fontSize: 12,
     padding: "6px 10px",
   },
@@ -27,7 +27,7 @@ export function CategoryBreakdown({ data, limit = 7 }: { data: { category: strin
   const rows = rest ? [...shown, { category: "그 외", amount: rest }] : shown;
   return (
     <div>
-      <div className="flex h-3 gap-[2px] overflow-hidden rounded-full">
+      <div className="flex h-3 gap-[3px] overflow-hidden rounded-full">
         {data.map((d) => (
           <span key={d.category} style={{ flex: d.amount, background: colorOf(d.category) }} title={d.category} />
         ))}
@@ -72,7 +72,7 @@ export function DailyBars({
           {budgetPerDay ? (
             <ReferenceLine y={budgetPerDay} stroke="var(--color-sub)" strokeDasharray="3 3" strokeWidth={1} />
           ) : null}
-          <Bar dataKey="amount" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+          <Bar dataKey="amount" radius={[5, 5, 2, 2]} isAnimationActive={false}>
             {data.map((d, i) => (
               <Cell
                 key={i}

@@ -1,16 +1,25 @@
 {
   "expo": {
-    "name": "결혼자금",
+    "name": "모아봄",
     "slug": "wedding-fund",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F8F9FC",
     "newArchEnabled": true,
     "android": {
       "package": "com.ruru.weddingfund",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F3F4FF"
+      },
       "permissions": [
         "POST_NOTIFICATIONS"
       ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     }
   }
 }

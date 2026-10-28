@@ -20,7 +20,7 @@ export function TxRow({ t, timeOnly }: { t: Tx; timeOnly?: boolean }) {
   const meta = [t.category, t.issuer, t.member?.name].filter(Boolean).join(", ");
   return (
     <div className={`flex items-center gap-3 py-3 ${t.cancelled || t.status === "IGNORED" ? "opacity-50" : ""}`}>
-      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-[12px] font-bold">
+      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-[12px] font-bold">
         <span className="absolute inset-0 opacity-15" style={{ background: color }} />
         <span className="relative" style={{ color }}>
           {(income ? "입금" : t.category).slice(0, 2)}

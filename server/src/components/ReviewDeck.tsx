@@ -207,7 +207,7 @@ export function ReviewDeck({
                 type="button"
                 onClick={() => setCategory(c)}
                 className={`rounded-full px-3 py-1.5 text-[13px] font-semibold ${
-                  c === chosen ? "bg-ink text-card" : "bg-paper text-sub"
+                  c === chosen ? "bg-save text-white shadow-sm" : "bg-paper text-sub"
                 }`}
               >
                 {c}
