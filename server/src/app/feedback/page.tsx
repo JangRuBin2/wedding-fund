@@ -20,7 +20,7 @@ export default async function FeedbackPage() {
       </header>
       {!hasKey && (
         <p className="rounded-xl bg-card p-3.5 text-[13px] leading-relaxed text-sub">
-          지금은 규칙 기반 요약만 보여 드려요. 서버 <code className="rounded bg-paper px-1">.env</code>에 <code className="rounded bg-paper px-1">GEMINI_API_KEY</code>를 넣으면 Gemini가 소비 패턴을 보고 코멘트를 써 드려요
+          지금은 규칙 기반 요약만 보여 드려요. 서버 환경변수(Vercel 또는 <code className="rounded bg-paper px-1">.env</code>)에 <code className="rounded bg-paper px-1">GEMINI_API_KEY</code>를 넣으면 Gemini가 소비 패턴을 보고 코멘트를 써 드려요
         </p>
       )}
       {list.length === 0 && (
