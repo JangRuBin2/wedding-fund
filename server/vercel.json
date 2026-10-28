@@ -1,5 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "prisma generate && prisma db push && next build",
-  "crons": [{ "path": "/api/cron/weekly-feedback", "schedule": "41 23 * * 0" }]
+  "crons": [
+    {
+      "path": "/api/cron/weekly-feedback",
+      "schedule": "41 23 * * 0"
+    }
+  ],
+  "regions": [
+    "hnd1"
+  ]
 }
