@@ -5,6 +5,8 @@ import { fmtKst, kstMonthStart, kstParts, manwon, WEEKDAYS } from "@/lib/time";
 import { ReviewDeck, type ReviewItem } from "@/components/ReviewDeck";
 import { TxRow } from "@/components/TxRow";
 import { addManual, deleteTransaction, setStatus, updateTransaction } from "../actions";
+import { isMine, mineWhere } from "@/lib/ownership";
+import { getMe } from "@/lib/me";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +30,11 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
   };
 
   const reviewMode = sp.status === "REVIEW";
+  const [me, mine, members] = await Promise.all([getMe(), mineWhere(), prisma.member.findMany({ orderBy: { createdAt: "asc" } })]);
   const txs = await prisma.transaction.findMany({
     where: {
-      ...(reviewMode ? { status: "REVIEW" } : { occurredAt: { gte: from, lt: to } }),
+      // 확인할 결제는 내 것만 (다른 사람 결제는 그 사람이 확인)
+      ...(reviewMode ? { status: "REVIEW", ...mine } : { occurredAt: { gte: from, lt: to } }),
       ...(sp.type === "INCOME" || sp.type === "EXPENSE" ? { type: sp.type } : {}),
       ...(sp.q ? { merchant: { contains: sp.q, mode: "insensitive" } } : {}),
     },
@@ -60,8 +64,12 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
       <main className="space-y-5">
         <header className="flex items-center justify-between">
           <h1 className="text-[22px] font-bold">확인할 결제</h1>
-          <Link href="/transactions" className="btn-ghost">전체 내역</Link>
+          <div className="flex gap-2">
+            <Link href="/transactions?add=1" className="btn-ghost">+ 직접 기록</Link>
+            <Link href="/transactions" className="btn-ghost">전체 내역</Link>
+          </div>
         </header>
+        {me && <p className="-mt-2 px-1 text-[12px] text-sub">{me}님 결제만 보여요. 다른 사람 결제는 그 사람이 확인해요</p>}
         <ReviewDeck items={items} expenseCategories={EXPENSE_CATEGORIES} incomeCategories={INCOME_CATEGORIES} />
       </main>
     );
@@ -106,7 +114,7 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
       <details className="card group" open={!!sp.add}>
         <summary className="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
           <span>직접 입력</span>
-          <span className="text-[13px] font-medium text-sub group-open:hidden">현금이나 월급처럼 알림이 오지 않는 내역</span>
+          <span className="text-[13px] font-medium text-sub group-open:hidden">현금·계좌이체·월급처럼 알림이 안 온 내역</span>
         </summary>
         <form action={addManual} className="mt-4 grid grid-cols-2 gap-2">
           <select name="type" className="input">
@@ -121,7 +129,18 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
             <optgroup label="지출">{EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</optgroup>
             <optgroup label="수입">{INCOME_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</optgroup>
           </select>
-          <input name="memo" placeholder="메모 (선택)" className="input col-span-2" />
+          <input name="memo" placeholder="메모 (선택)" className={`input ${members.length > 1 ? "" : "col-span-2"}`} />
+          {members.length > 1 && (
+            <select name="member" defaultValue={me ?? ""} className="input" aria-label="누가 쓴 돈">
+              {!me && <option value="">누가 쓴 돈인지 모름</option>}
+              {members.map((m) => (
+                <option key={m.id} value={m.name}>
+                  {m.name}
+                  {m.name === me ? " (나)" : ""}
+                </option>
+              ))}
+            </select>
+          )}
           <button className="btn col-span-2">내역에 추가</button>
         </form>
       </details>
@@ -140,6 +159,9 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                   <TxRow t={t} timeOnly={!reviewMode} />
                 </summary>
                 <div className="mb-3 space-y-3 rounded-xl bg-paper p-3">
+                  {!isMine(t, me) && (
+                    <p className="text-[12px] font-semibold text-sub">{t.member?.name}님 결제라 보기만 할 수 있어요. 고치거나 지우는 건 {t.member?.name}님이 해요</p>
+                  )}
                   {t.raws[0] && (
                     <p className="whitespace-pre-wrap rounded-lg border border-dashed border-line p-2.5 text-xs leading-relaxed text-sub">
                       {t.raws[0].title}
@@ -147,6 +169,8 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                       {t.raws[0].text}
                     </p>
                   )}
+                  {isMine(t, me) && (
+                  <>
                   <form action={updateTransaction} className="grid grid-cols-2 gap-2">
                     <input type="hidden" name="id" value={t.id} />
                     <input name="merchant" defaultValue={t.merchant} className="input !bg-card" />
@@ -178,6 +202,8 @@ export default async function Transactions({ searchParams }: { searchParams: SP 
                   <p className="text-[11px] text-sub">
                     적금·청약 이체는 카테고리를 '저축'으로 바꾸면 집계에서 자동으로 빠져요. 계약금·잔금은 '결혼준비'로 바꿔 주세요
                   </p>
+                  </>
+                  )}
                 </div>
               </details>
             </li>

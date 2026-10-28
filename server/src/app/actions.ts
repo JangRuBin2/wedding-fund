@@ -10,6 +10,7 @@ import { SUGGESTED_TASKS, WEDDING_STEPS } from "@/lib/checklist";
 import { PAY_METHODS, PAYERS, WEDDING_CATEGORIES } from "@/lib/wedding-meta";
 import { currentSession, getMe, ME_COOKIE } from "@/lib/me";
 import { cookies } from "next/headers";
+import { assertMine } from "@/lib/ownership";
 import { categorizeByRules, SAVINGS_CATEGORY, statusForCategory } from "@/lib/categories";
 
 function refresh() {
@@ -20,6 +21,7 @@ function refresh() {
 /** 카테고리/가맹점/상태 수정. learn=on이면 같은 가맹점 과거·미래 건 모두 이 카테고리로 */
 export async function updateTransaction(form: FormData) {
   const id = String(form.get("id"));
+  if (!(await assertMine(id))) return;
   const category = form.get("category") ? String(form.get("category")) : undefined;
   const merchant = form.get("merchant") ? String(form.get("merchant")).trim() : undefined;
   const status = form.get("status") ? String(form.get("status")) : undefined;
@@ -62,7 +64,7 @@ async function learnCategory(tx: { type: string; merchant: string }, category: s
 
 /** 확인할 결제 스와이프: 오른쪽 = 저장(확정), 왼쪽 = 삭제. 카테고리를 바꿨으면 같은 가맹점에도 학습 */
 export async function reviewDecision(id: string, decision: "keep" | "delete", category?: string) {
-  const tx = await prisma.transaction.findUnique({ where: { id } });
+  const tx = await assertMine(id);
   if (!tx) return;
   if (decision === "delete") {
     await prisma.rawNotification.updateMany({ where: { transactionId: id }, data: { transactionId: null } });
@@ -76,11 +78,13 @@ export async function reviewDecision(id: string, decision: "keep" | "delete", ca
 }
 
 export async function setStatus(id: string, status: "CONFIRMED" | "IGNORED") {
+  if (!(await assertMine(id))) return;
   await prisma.transaction.update({ where: { id }, data: { status } });
   refresh();
 }
 
 export async function deleteTransaction(id: string) {
+  if (!(await assertMine(id))) return;
   await prisma.rawNotification.updateMany({ where: { transactionId: id }, data: { transactionId: null } });
   await prisma.transaction.delete({ where: { id } });
   refresh();
@@ -95,8 +99,12 @@ export async function addManual(form: FormData) {
   if (!amount) return;
   const occurredAt = date ? new Date(`${date}T12:00:00+09:00`) : new Date();
   const category = String(form.get("category") || "") || categorizeByRules(merchant, type);
+  // 누가 쓴 돈인지 (기본은 나). 그 사람 결제로 남아서 그 사람만 고칠 수 있음
+  const who = String(form.get("member") || (await getMe()) || "").trim().slice(0, 30);
+  const member = who ? await prisma.member.upsert({ where: { name: who }, create: { name: who }, update: {} }) : null;
   await prisma.transaction.create({
     data: {
+      memberId: member?.id ?? null,
       type,
       amount,
       merchant,

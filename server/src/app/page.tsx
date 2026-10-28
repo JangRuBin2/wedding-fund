@@ -12,6 +12,7 @@ import { Logo } from "@/components/Logo";
 import { PHOTOS, photoUrl } from "@/lib/photos";
 import { todayTip } from "@/lib/tips";
 import { getMe } from "@/lib/me";
+import { mineWhere } from "@/lib/ownership";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function Home() {
     expensesBetween(monthStart, kstMonthStart(now, 1), { living: true }),
     expensesBetween(kstMonthStart(now, -4), monthStart, { living: true }),
     prisma.transaction.findMany({ orderBy: { occurredAt: "desc" }, take: 5, include: { member: true } }),
-    prisma.transaction.count({ where: { status: "REVIEW" } }),
+    mineWhere().then((mine) => prisma.transaction.count({ where: { status: "REVIEW", ...mine } })),
     prisma.feedback.findFirst({ orderBy: { weekStart: "desc" } }),
     prisma.member.findMany({ include: { transactions: { where: { ...ACTIVE, occurredAt: { gte: monthStart } } } } }),
     weddingOverview(now),
