@@ -5,10 +5,13 @@ import { prisma } from "@/lib/db";
 import { normalizeMerchant } from "@/lib/parser";
 import { generateWeeklyFeedback } from "@/lib/feedback";
 import { WEDDING_GROUPS, WEDDING_TEMPLATE, weddingOverview } from "@/lib/wedding";
+import { SUGGESTED_TASKS, WEDDING_STEPS } from "@/lib/checklist";
+import { getMe, ME_COOKIE } from "@/lib/me";
+import { cookies } from "next/headers";
 import { categorizeByRules, SAVINGS_CATEGORY, statusForCategory } from "@/lib/categories";
 
 function refresh() {
-  for (const p of ["/", "/transactions", "/wedding", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
+  for (const p of ["/", "/transactions", "/wedding", "/wedding/budget", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
 }
 
 /** 카테고리/가맹점/상태 수정. learn=on이면 같은 가맹점 과거·미래 건 모두 이 카테고리로 */
@@ -190,5 +193,146 @@ export async function addWeddingTemplate() {
 export async function alignGoalToBudget() {
   const { budget } = await weddingOverview();
   if (budget > 0) await prisma.goal.update({ where: { id: 1 }, data: { targetAmount: budget } }).catch(() => {});
+  refresh();
+}
+
+// ── 결혼 준비 체크리스트 ──
+
+/** 시트 순서대로 20단계 만들기. 이미 있는 단계는 건너뜀 */
+export async function createWeddingSteps() {
+  const have = new Set((await prisma.weddingStep.findMany({ select: { templateKey: true } })).map((s) => s.templateKey));
+  const data = WEDDING_STEPS.filter((s) => !have.has(s.key)).map((s) => ({
+    order: s.order,
+    title: s.title,
+    templateKey: s.key,
+    hint: "hint" in s ? s.hint : null,
+    note: "note" in s ? s.note : null,
+  }));
+  if (data.length) await prisma.weddingStep.createMany({ data });
+  refresh();
+}
+
+/** 결혼식 날짜(목표 날짜) 기준 추천 일정을 날짜 없는 단계에만 채움 */
+export async function fillStepDates() {
+  const goal = await prisma.goal.findUnique({ where: { id: 1 } });
+  if (!goal) return;
+  const offsets = new Map<string, number>(WEDDING_STEPS.map((s) => [s.key, s.offset]));
+  const steps = await prisma.weddingStep.findMany({ where: { targetDate: null, templateKey: { not: null } } });
+  await prisma.$transaction(
+    steps
+      .filter((s) => offsets.has(s.templateKey!))
+      .map((s) =>
+        prisma.weddingStep.update({
+          where: { id: s.id },
+          data: { targetDate: new Date(goal.targetDate.getTime() + offsets.get(s.templateKey!)! * 86400_000) },
+        }),
+      ),
+  );
+  refresh();
+}
+
+export async function toggleStep(id: string) {
+  const step = await prisma.weddingStep.findUnique({ where: { id } });
+  if (!step) return;
+  const me = await getMe();
+  await prisma.weddingStep.update({
+    where: { id },
+    data: step.done ? { done: false, doneAt: null, doneBy: null } : { done: true, doneAt: new Date(), doneBy: me },
+  });
+  refresh();
+}
+
+export async function updateStep(form: FormData) {
+  const id = String(form.get("id"));
+  await prisma.weddingStep.update({
+    where: { id },
+    data: {
+      title: String(form.get("title") || "").trim() || undefined,
+      targetDate: dateOrNull(form.get("targetDate")),
+      note: String(form.get("note") || "").trim() || null,
+    },
+  });
+  refresh();
+}
+
+export async function addWeddingStep(form: FormData) {
+  const title = String(form.get("title") || "").trim();
+  if (!title) return;
+  const last = await prisma.weddingStep.findFirst({ orderBy: { order: "desc" } });
+  await prisma.weddingStep.create({ data: { title, order: (last?.order ?? 0) + 1, targetDate: dateOrNull(form.get("targetDate")) } });
+  refresh();
+}
+
+export async function deleteWeddingStep(id: string) {
+  await prisma.weddingStep.delete({ where: { id } });
+  refresh();
+}
+
+export async function addTask(form: FormData) {
+  const stepId = String(form.get("stepId"));
+  const content = String(form.get("content") || "").trim();
+  if (!content) return;
+  await prisma.weddingTask.create({ data: { stepId, content, createdBy: await getMe() } });
+  refresh();
+}
+
+/** 그 단계의 추천 할 일 넣기. 이미 같은 내용이 있으면 건너뜀 */
+export async function addSuggestedTasks(stepId: string) {
+  const step = await prisma.weddingStep.findUnique({ where: { id: stepId }, include: { tasks: true } });
+  if (!step?.templateKey) return;
+  const have = new Set(step.tasks.map((t) => t.content));
+  const me = await getMe();
+  const data = SUGGESTED_TASKS.filter((t) => t.stepKey === step.templateKey && !have.has(t.content)).map((t, i) => ({
+    stepId,
+    section: t.section,
+    content: t.content,
+    createdBy: me,
+    sortOrder: step.tasks.length + i,
+  }));
+  if (data.length) await prisma.weddingTask.createMany({ data });
+  refresh();
+}
+
+export async function toggleTask(id: string) {
+  const task = await prisma.weddingTask.findUnique({ where: { id } });
+  if (!task) return;
+  const me = await getMe();
+  await prisma.weddingTask.update({
+    where: { id },
+    data: task.done ? { done: false, doneAt: null, doneBy: null } : { done: true, doneAt: new Date(), doneBy: me },
+  });
+  refresh();
+}
+
+export async function deleteTask(id: string) {
+  await prisma.weddingTask.delete({ where: { id } });
+  refresh();
+}
+
+/** 이 기기는 누구 (체크한 사람 기록용) */
+export async function setMe(form: FormData) {
+  const name = String(form.get("name") || "").trim().slice(0, 30);
+  const jar = await cookies();
+  if (name) jar.set(ME_COOKIE, encodeURIComponent(name), { maxAge: 365 * 86400, httpOnly: true, sameSite: "lax", path: "/" });
+  else jar.delete(ME_COOKIE);
+  refresh();
+}
+
+/** 팁 맞춤용 내 정보. 빈 값은 '모름'으로 저장 */
+export async function saveProfile(form: FormData) {
+  const name = String(form.get("name") || "").trim();
+  if (!name) return;
+  const tri = (k: string) => (form.get(k) === "yes" ? true : form.get(k) === "no" ? false : null);
+  const year = Number(form.get("birthYear"));
+  const housing = String(form.get("housing") || "");
+  const data = {
+    birthYear: year >= 1940 && year <= 2015 ? year : null,
+    smallCompany: tri("smallCompany"),
+    housing: ["월세", "전세", "자가", "가족과 함께"].includes(housing) ? housing : null,
+    householder: tri("householder"),
+    changedJobThisYear: tri("changedJobThisYear"),
+    married: tri("married"),
+  };
+  await prisma.profile.upsert({ where: { name }, create: { name, ...data }, update: data });
   refresh();
 }

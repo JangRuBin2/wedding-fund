@@ -1,272 +1,257 @@
 import Link from "next/link";
+import { prisma } from "@/lib/db";
 import { getGoalStatus } from "@/lib/goal";
-import { dueDateLabel, dueLabel, weddingOverview, WEDDING_GROUPS, WEDDING_SUGGESTIONS } from "@/lib/wedding";
-import { manwon, toKst } from "@/lib/time";
+import { checklistOverview, suggestionsFor } from "@/lib/checklist";
+import { dueDateLabel, dueLabel } from "@/lib/wedding";
+import { getMe } from "@/lib/me";
+import { toKst } from "@/lib/time";
 import { SubmitButton } from "@/components/SubmitButton";
-import { PHOTOS, photoUrl } from "@/lib/photos";
+import { WeddingHeader } from "@/components/WeddingTabs";
 import {
-  addWeddingItem,
-  addWeddingTemplate,
-  alignGoalToBudget,
-  deleteWeddingItem,
-  settleWeddingItem,
-  updateWeddingItem,
+  addSuggestedTasks,
+  addTask,
+  addWeddingStep,
+  createWeddingSteps,
+  deleteTask,
+  deleteWeddingStep,
+  fillStepDates,
+  setMe,
+  toggleStep,
+  toggleTask,
+  updateStep,
 } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 const dateInput = (d: Date | null) => (d ? toKst(d).toISOString().slice(0, 10) : "");
+const md = (d: Date) => {
+  const k = toKst(d);
+  return `${k.getUTCMonth() + 1}/${k.getUTCDate()}`;
+};
+const who = (by: string | null, at: Date | null) => [by, at && md(at)].filter(Boolean).join(" · ");
 
-export default async function WeddingPage() {
+export default async function WeddingChecklistPage() {
   const now = new Date();
-  const [w, status] = await Promise.all([weddingOverview(now), getGoalStatus(now)]);
-  const gap = status ? status.goal.targetAmount - w.budget : 0;
+  const [c, status, me, members] = await Promise.all([
+    checklistOverview(now),
+    getGoalStatus(now),
+    getMe(),
+    prisma.member.findMany({ orderBy: { createdAt: "asc" } }),
+  ]);
+  const undated = c.steps.some((s) => !s.done && !s.targetDate && s.templateKey);
+  const upNext = [...c.overdue, ...c.soon].slice(0, 4);
 
   return (
     <main className="space-y-7">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-[22px] font-bold">결혼 준비</h1>
-        {status && <p className="num text-[15px] font-bold text-sub">D-{status.daysLeft}</p>}
-      </header>
+      <WeddingHeader active="todo" daysLeft={status?.daysLeft} />
 
-      {w.items.length === 0 ? (
+      {c.total === 0 ? (
         <section className="card space-y-4">
           <div>
-            <p className="text-[17px] font-bold">예산표부터 만들어 볼까요?</p>
+            <p className="text-[17px] font-bold">체크리스트부터 만들어 볼까요?</p>
             <p className="mt-1 text-[14px] leading-relaxed text-sub">
-              항목별로 예산과 잔금 날짜를 적어 두시면, 언제 얼마가 나가는지 홈에서 미리 알려 드릴게요. 다 정하시면 목표 금액도
-              예산 합계로 맞출 수 있어요.
+              양가 인사부터 결혼식 당일, 신혼여행까지 20단계를 순서대로 만들어 드려요. 단계마다 세부 할 일과 누가 체크했는지가 남아요.
             </p>
           </div>
-          <form action={addWeddingTemplate}>
-            <SubmitButton pendingText="만드는 중…">자주 쓰는 항목 10개로 시작하기</SubmitButton>
+          <form action={createWeddingSteps}>
+            <SubmitButton pendingText="만드는 중…">20단계로 시작하기</SubmitButton>
           </form>
-          <p className="text-[12px] text-sub">예식장, 스드메, 예물, 신혼여행, 가전 같은 항목이 예산 없이 추가돼요. 필요 없는 항목은 지워 주세요</p>
         </section>
       ) : (
         <>
+          {!me && members.length > 0 && (
+            <form action={setMe} className="card flex flex-wrap items-center gap-2 !py-3.5">
+              <p className="w-full text-[13px] text-sub">누가 체크했는지 남기려면 이 기기를 쓰는 사람을 골라 주세요</p>
+              {members.map((m) => (
+                <button key={m.id} name="name" value={m.name} className="btn-ghost !bg-save-soft !text-save">
+                  {m.name}
+                </button>
+              ))}
+            </form>
+          )}
+
           <section className="card">
             <div className="flex items-baseline justify-between">
-              <p className="text-[15px] text-sub">총 예산</p>
-              <p className="num text-[26px] font-extrabold">{manwon(w.budget)}원</p>
-            </div>
-            <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-paper">
-              <span className="bg-save" style={{ width: `${w.budget ? (Math.min(w.paid, w.budget) / w.budget) * 100 : 0}%` }} />
-            </div>
-            <div className="mt-3 grid grid-cols-2 text-[14px]">
-              <div>
-                <p className="text-sub">낸 돈</p>
-                <p className="num text-[17px] font-bold text-save">{manwon(w.paid)}원</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sub">더 낼 돈</p>
-                <p className="num text-[17px] font-bold">{manwon(w.remaining)}원</p>
-              </div>
-            </div>
-            {w.undecided > 0 && (
-              <p className="mt-3 rounded-lg bg-paper px-3 py-2 text-[13px] text-sub">
-                예산을 정하지 않은 항목이 {w.undecided}개 있어요. 대략이라도 입력하시면 합계가 정확해져요
+              <p className="text-[15px] text-sub">진행</p>
+              <p className="num text-[15px] text-sub">
+                <b className="text-[24px] font-extrabold text-ink">{c.done}</b> / {c.total}단계
               </p>
-            )}
-            {status && w.budget > 0 && Math.abs(gap) >= 10_000 && (
-              <form action={alignGoalToBudget} className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
-                <p className="text-[13px] leading-snug text-sub">
-                  목표 금액 <span className="num">{manwon(status.goal.targetAmount)}원</span>이 예산 합계보다{" "}
-                  <b className={gap > 0 ? "text-ink" : "text-spend"}>{manwon(Math.abs(gap))}원 {gap > 0 ? "많아요" : "적어요"}</b>
-                </p>
-                <SubmitButton pendingText="맞추는 중…" className="shrink-0 whitespace-nowrap">목표를 예산에 맞추기</SubmitButton>
+            </div>
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-paper">
+              <div className="h-full rounded-full bg-save" style={{ width: `${c.total ? (c.done / c.total) * 100 : 0}%` }} />
+            </div>
+            {undated && status && (
+              <form action={fillStepDates} className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
+                <p className="text-[13px] leading-snug text-sub">날짜가 없는 단계에 결혼식 날짜 기준 추천 일정을 넣을 수 있어요</p>
+                <SubmitButton pendingText="채우는 중…" className="shrink-0 whitespace-nowrap">추천 일정 채우기</SubmitButton>
               </form>
             )}
-            {status && status.weddingSpent > 0 && (
-              <p className="mt-3 text-[12px] text-sub">
-                내역에서 결혼준비로 분류된 결제 <span className="num">{manwon(status.weddingSpent)}원</span>이에요. 위의 &apos;낸 돈&apos;과 크게
-                다르다면 항목별 낸 돈을 고쳐 주세요
+            {!status && (
+              <p className="mt-3 border-t border-line pt-3 text-[13px] text-sub">
+                <Link href="/settings" className="font-semibold text-save">설정</Link>에서 결혼식 날짜(목표일)를 정하면 추천 일정을 채울 수 있어요
               </p>
             )}
           </section>
 
-          <section className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" aria-label="큰 준비 항목">
-            {PHOTO_CARDS.map((c) => {
-              const items = w.items.filter((i) => i.group === c.group);
-              const budget = items.reduce((s, i) => s + i.budget, 0);
-              const paid = items.reduce((s, i) => s + i.paid, 0);
-              return (
-                <a
-                  key={c.group}
-                  href={`#${encodeURIComponent(c.group)}`}
-                  className="photo-card flex h-44 w-[72%] shrink-0 snap-start flex-col justify-end p-4"
-                  style={PHOTOS[c.photo] ? ({ "--photo": photoUrl(c.photo) } as React.CSSProperties) : undefined}
-                >
-                  <p className="text-[12px] font-medium opacity-85">{c.group}</p>
-                  <p className="text-[19px] font-bold">{c.title}</p>
-                  <p className="num mt-1 text-[13px] opacity-90">
-                    {budget ? `${manwon(paid)}원 / ${manwon(budget)}원` : items.length ? "예산 미정" : "항목을 추가해 주세요"}
-                  </p>
-                  <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-white/30">
-                    <span className="block h-full rounded-full bg-white" style={{ width: `${budget ? Math.min(1, paid / budget) * 100 : 0}%` }} />
-                  </span>
-                </a>
-              );
-            })}
-          </section>
-
-          {w.upcoming.length > 0 && (
+          {(upNext.length > 0 || c.next) && (
             <section>
               <h2 className="section-title">
-                잔금 일정
-                <small>날짜 순</small>
+                곧 할 일
+                <small>{upNext.length ? "30일 안, 밀린 것 먼저" : "다음 단계"}</small>
               </h2>
-              <ul className="card ledger !py-1">
-                {w.upcoming.map((i) => (
-                  <li key={i.id} className="flex items-center gap-3 py-3">
-                    <span
-                      className={`num w-14 shrink-0 text-[13px] font-bold ${
-                        i.daysUntil < 0 ? "text-spend" : i.daysUntil <= 30 ? "text-ink" : "text-sub"
-                      }`}
-                    >
-                      {dueLabel(i.daysUntil)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-semibold">{i.name}</span>
-                      <span className="num text-[12px] text-sub">{dueDateLabel(i.dueDate!, now)}</span>
-                    </span>
-                    <span className="num shrink-0 text-[15px] font-bold">{manwon(i.due)}원</span>
-                  </li>
-                ))}
+              <ul className="card ledger !py-1 ring-1 ring-pink">
+                {(upNext.length ? upNext : [c.next!]).map((s) => {
+                  const days = s.targetDate ? Math.ceil((s.targetDate.getTime() - now.getTime()) / 86400_000) : null;
+                  return (
+                    <li key={s.id} className="flex items-center gap-3 py-3">
+                      <span className={`num w-14 shrink-0 text-[13px] font-bold ${days != null && days < 0 ? "text-spend" : "text-sub"}`}>
+                        {days == null ? "다음" : dueLabel(days)}
+                      </span>
+                      <a href={`#step-${s.id}`} className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+                        {s.title}
+                      </a>
+                      {s.tasks.length > 0 && (
+                        <span className="num shrink-0 text-[12px] text-sub">
+                          {s.tasks.filter((t) => t.done).length}/{s.tasks.length}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}
 
-          {WEDDING_GROUPS.map((g) => {
-            const items = w.items.filter((i) => i.group === g);
-            if (!items.length) return null;
-            const sub = items.reduce((s, i) => s + i.budget, 0);
-            return (
-              <section key={g} id={g} className="scroll-mt-6">
-                <h2 className="section-title">
-                  {g}
-                  <small className="num">{sub ? `${manwon(sub)}원` : "예산 미정"}</small>
-                </h2>
-                <ul className="card ledger !py-1">
-                  {items.map((i) => {
-                    const done = i.budget > 0 && i.paid >= i.budget;
-                    return (
-                      <li key={i.id}>
-                        <details className="group">
-                          <summary className="flex cursor-pointer list-none items-center gap-3 py-3 [&::-webkit-details-marker]:hidden">
-                            <span className="min-w-0 flex-1">
-                              <span className={`block truncate text-[15px] font-semibold ${done ? "text-sub" : ""}`}>{i.name}</span>
-                              {i.budget > 0 ? (
-                                <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-paper">
-                                  <span className="block h-full bg-save" style={{ width: `${Math.min(1, i.paid / i.budget) * 100}%` }} />
-                                </span>
-                              ) : (
-                                <span className="text-[12px] text-faint">예산 미정</span>
-                              )}
-                            </span>
-                            <span className="shrink-0 text-right">
-                              {done ? (
-                                <span className="text-[13px] font-bold text-save">다 냈어요</span>
-                              ) : i.budget === 0 ? (
-                                <span className="text-[13px] text-faint">미정</span>
-                              ) : (
-                                <>
-                                  <span className="num block text-[15px] font-bold">{manwon(i.budget)}원</span>
-                                  {i.paid > 0 && <span className="num block text-[12px] text-sub">{manwon(i.paid)}원 냈어요</span>}
-                                </>
-                              )}
-                            </span>
-                          </summary>
-                          <div className="mb-3 space-y-3 rounded-xl bg-paper p-3">
-                            <form action={updateWeddingItem} className="grid grid-cols-2 gap-2">
-                              <input type="hidden" name="id" value={i.id} />
-                              <label className="col-span-2 space-y-1">
-                                <span className="label">항목</span>
-                                <input name="name" defaultValue={i.name} className="input !bg-card" />
-                              </label>
-                              <label className="space-y-1">
-                                <span className="label">예산 (원)</span>
-                                <input name="budget" inputMode="numeric" defaultValue={i.budget || ""} placeholder="미정" className="input num !bg-card" />
-                              </label>
-                              <label className="space-y-1">
-                                <span className="label">낸 돈 (원)</span>
-                                <input name="paid" inputMode="numeric" defaultValue={i.paid || ""} placeholder="0" className="input num !bg-card" />
-                              </label>
-                              <label className="space-y-1">
-                                <span className="label">잔금일</span>
-                                <input name="dueDate" type="date" defaultValue={dateInput(i.dueDate)} className="input !bg-card" />
-                              </label>
-                              <label className="space-y-1">
-                                <span className="label">분류</span>
-                                <select name="group" defaultValue={i.group} className="input !bg-card">
-                                  {WEDDING_GROUPS.map((x) => (
-                                    <option key={x}>{x}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label className="col-span-2 space-y-1">
-                                <span className="label">메모</span>
-                                <input name="memo" defaultValue={i.memo ?? ""} placeholder="업체, 계약 조건, 연락처" className="input !bg-card" />
-                              </label>
-                              <button className="btn col-span-2">저장</button>
-                            </form>
-                            <div className="flex gap-2">
-                              {!done && i.budget > 0 && (
-                                <form action={settleWeddingItem.bind(null, i.id)}>
-                                  <button className="btn-ghost">남은 돈 다 냈어요</button>
+          <section>
+            <h2 className="section-title">
+              전체 흐름
+              {me && (
+                <form action={setMe}>
+                  <button name="name" value="" className="text-[12px] font-medium text-sub">
+                    {me}님으로 기록 중 · 바꾸기
+                  </button>
+                </form>
+              )}
+            </h2>
+            <ol className="card !py-2">
+              {c.steps.map((s, i) => {
+                const tasksDone = s.tasks.filter((t) => t.done).length;
+                const suggestions = suggestionsFor(s.templateKey).filter((t) => !s.tasks.some((x) => x.content === t.content));
+                const days = s.targetDate ? Math.ceil((s.targetDate.getTime() - now.getTime()) / 86400_000) : null;
+                return (
+                  <li key={s.id} id={`step-${s.id}`} className="relative flex scroll-mt-6 gap-3">
+                    {/* 세로선 */}
+                    {i < c.steps.length - 1 && <span className="absolute top-9 bottom-0 left-[15px] w-[2px] bg-line" aria-hidden />}
+                    <form action={toggleStep.bind(null, s.id)} className="relative z-[1] pt-2">
+                      <button
+                        aria-label={s.done ? `${s.title} 완료 취소` : `${s.title} 완료`}
+                        className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[13px] font-bold ${
+                          s.done ? "border-save bg-save text-white" : "border-line bg-card text-sub"
+                        }`}
+                      >
+                        {s.done ? "✓" : s.order}
+                      </button>
+                    </form>
+                    <details className="group min-w-0 flex-1 pb-3" open={!s.done && s.id === c.next?.id}>
+                      <summary className="flex cursor-pointer list-none items-start justify-between gap-2 pt-2.5 [&::-webkit-details-marker]:hidden">
+                        <span className="min-w-0">
+                          <span className={`block text-[15px] font-semibold ${s.done ? "text-sub line-through decoration-1" : ""}`}>{s.title}</span>
+                          <span className="num block text-[12px] text-sub">
+                            {s.done
+                              ? `완료 ${who(s.doneBy, s.doneAt)}`
+                              : s.targetDate
+                                ? `${dueDateLabel(s.targetDate, now)} · ${dueLabel(days!)}`
+                                : "날짜 미정"}
+                            {s.tasks.length > 0 && ` · 할 일 ${tasksDone}/${s.tasks.length}`}
+                          </span>
+                        </span>
+                        <span className="mt-1 shrink-0 text-[12px] text-faint group-open:rotate-180" aria-hidden>
+                          ▾
+                        </span>
+                      </summary>
+
+                      <div className="mt-3 space-y-3">
+                        {s.hint && <p className="rounded-xl bg-spend-soft px-3 py-2 text-[13px] text-spend">{s.hint}</p>}
+                        {s.note && <p className="text-[13px] text-sub">{s.note}</p>}
+
+                        {s.tasks.length > 0 && (
+                          <ul className="space-y-1">
+                            {s.tasks.map((t) => (
+                              <li key={t.id} className="flex items-center gap-2.5">
+                                <form action={toggleTask.bind(null, t.id)}>
+                                  <button
+                                    aria-label={t.done ? "완료 취소" : "완료"}
+                                    className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-[11px] font-bold ${
+                                      t.done ? "border-save bg-save text-white" : "border-line"
+                                    }`}
+                                  >
+                                    {t.done ? "✓" : ""}
+                                  </button>
                                 </form>
-                              )}
-                              <form action={deleteWeddingItem.bind(null, i.id)}>
-                                <button className="btn-ghost !text-spend">삭제</button>
-                              </form>
-                            </div>
-                          </div>
+                                <span className={`min-w-0 flex-1 text-[14px] ${t.done ? "text-sub line-through" : ""}`}>
+                                  {t.section === "행정·혜택" && (
+                                    <span className="mr-1.5 rounded-md bg-save-soft px-1.5 py-0.5 text-[10px] font-bold text-save">행정</span>
+                                  )}
+                                  {t.content}
+                                  {t.done && t.doneBy && <span className="ml-1.5 text-[11px] text-faint no-underline">{t.doneBy}</span>}
+                                </span>
+                                <form action={deleteTask.bind(null, t.id)}>
+                                  <button className="px-1 text-[12px] text-faint hover:text-spend" aria-label={`${t.content} 삭제`}>
+                                    ✕
+                                  </button>
+                                </form>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        <form action={addTask} className="flex gap-2">
+                          <input type="hidden" name="stepId" value={s.id} />
+                          <input name="content" placeholder="할 일 추가" className="input !py-2 text-[14px]" />
+                          <button className="btn-ghost shrink-0 !bg-paper">추가</button>
+                        </form>
+                        {suggestions.length > 0 && (
+                          <form action={addSuggestedTasks.bind(null, s.id)}>
+                            <button className="text-[13px] font-semibold text-save">
+                              추천 할 일 {suggestions.length}개 넣기 ({suggestions.slice(0, 2).map((x) => x.content).join(", ")}
+                              {suggestions.length > 2 ? " …" : ""})
+                            </button>
+                          </form>
+                        )}
+
+                        <details className="rounded-xl bg-paper p-3">
+                          <summary className="cursor-pointer list-none text-[12px] font-semibold text-sub [&::-webkit-details-marker]:hidden">
+                            단계 고치기
+                          </summary>
+                          <form action={updateStep} className="mt-3 grid grid-cols-2 gap-2">
+                            <input type="hidden" name="id" value={s.id} />
+                            <input name="title" defaultValue={s.title} className="input col-span-2 !bg-card" />
+                            <input name="targetDate" type="date" defaultValue={dateInput(s.targetDate)} className="input col-span-2 !bg-card" />
+                            <input name="note" defaultValue={s.note ?? ""} placeholder="메모 (비고)" className="input col-span-2 !bg-card" />
+                            <button className="btn col-span-2">저장</button>
+                          </form>
+                          <form action={deleteWeddingStep.bind(null, s.id)} className="mt-2 text-right">
+                            <button className="btn-ghost !text-spend">이 단계 삭제</button>
+                          </form>
                         </details>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
+                      </div>
+                    </details>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+
+          <section>
+            <h2 className="section-title">단계 추가</h2>
+            <form action={addWeddingStep} className="card grid grid-cols-2 gap-2">
+              <input name="title" placeholder="예: 웨딩슈즈 고르기" required className="input col-span-2" />
+              <input name="targetDate" type="date" className="input col-span-2" />
+              <button className="btn col-span-2">추가</button>
+            </form>
+          </section>
         </>
       )}
-
-      <section>
-        <h2 className="section-title">항목 추가</h2>
-        <form action={addWeddingItem} className="card grid grid-cols-2 gap-2">
-          <input name="name" list="wedding-suggestions" placeholder="예: 본식 스냅" required className="input col-span-2" />
-          <datalist id="wedding-suggestions">
-            {WEDDING_SUGGESTIONS.map((x) => (
-              <option key={x} value={x} />
-            ))}
-          </datalist>
-          <select name="group" defaultValue="기타" className="input">
-            {WEDDING_GROUPS.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-          <input name="budget" inputMode="numeric" placeholder="예산 (원)" className="input num" />
-          <input name="dueDate" type="date" className="input" aria-label="잔금일" />
-          <input name="paid" inputMode="numeric" placeholder="이미 낸 돈 (원)" className="input num" />
-          <button className="btn col-span-2">추가</button>
-        </form>
-      </section>
-
-      <p className="px-1 text-[12px] leading-relaxed text-sub">
-        결혼준비 결제는 홈의 생활비, 하루 권장액, 소비 패턴, 큰 지출 알림에서 빠지고, 목표 진행에는 &apos;이미 쓴 결혼자금&apos;으로 들어가요.
-        내역에서 카테고리를 결혼준비로 바꿔 주세요.{" "}
-        <Link href="/transactions" className="font-semibold text-save underline-offset-2 hover:underline">
-          내역 보기
-        </Link>
-      </p>
     </main>
   );
 }
-
-// 사진은 public/photos/<photo>.jpg (lib/photos.ts에서 켜기). 없으면 그라데이션으로 보임
-const PHOTO_CARDS = [
-  { group: "예물·예단", title: "웨딩링", photo: "ring" },
-  { group: "신혼집·혼수", title: "우리의 첫 집", photo: "home" },
-  { group: "신혼여행", title: "신혼여행", photo: "trip" },
-] as const;

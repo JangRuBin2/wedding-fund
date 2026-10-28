@@ -100,3 +100,57 @@ model WeddingItem {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
+
+/// 결혼 준비 단계 (시트의 '전체 흐름' 20단계)
+model WeddingStep {
+  id          String        @id @default(cuid())
+  order       Int
+  title       String
+  /// 시트의 '비고'
+  note        String?
+  /// 템플릿에 고정된 안내 (하객 수 → 웨딩홀·청첩장)
+  hint        String?
+  targetDate  DateTime?
+  done        Boolean       @default(false)
+  doneAt      DateTime?
+  /// 체크한 사람 (Member.name)
+  doneBy      String?
+  /// 템플릿을 여러 번 불러와도 중복되지 않게
+  templateKey String?       @unique
+  tasks       WeddingTask[]
+}
+
+/// 단계 안의 세부 할 일
+model WeddingTask {
+  id        String      @id @default(cuid())
+  step      WeddingStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  stepId    String
+  /// 시트의 세부 칸 이름 (상견례 / 드레스 피팅 / 행정·혜택 …)
+  section   String?
+  content   String
+  done      Boolean     @default(false)
+  doneAt    DateTime?
+  doneBy    String?
+  createdBy String?
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@index([stepId])
+}
+
+/// 팁을 사람에 맞게 거르기 위한 정보. 비워 두면 그 조건은 안 따지고 다 보여 줌
+model Profile {
+  /// Member.name 과 같은 이름 (폰 앱에 입력한 이름)
+  name               String   @id
+  birthYear          Int?
+  /// 중소기업 재직 여부
+  smallCompany       Boolean?
+  /// 월세 | 전세 | 자가 | 가족과 함께
+  housing            String?
+  householder        Boolean?
+  /// 올해 이직(퇴사)했는지
+  changedJobThisYear Boolean?
+  /// 혼인신고 했는지
+  married            Boolean?
+  updatedAt          DateTime @updatedAt
+}

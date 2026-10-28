@@ -11,6 +11,7 @@ import { TxRow } from "@/components/TxRow";
 import { Logo } from "@/components/Logo";
 import { PHOTOS, photoUrl } from "@/lib/photos";
 import { todayTip } from "@/lib/tips";
+import { getMe } from "@/lib/me";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export default async function Home() {
     prisma.feedback.findFirst({ orderBy: { weekStart: "desc" } }),
     prisma.member.findMany({ include: { transactions: { where: { ...ACTIVE, occurredAt: { gte: monthStart } } } } }),
     weddingOverview(now),
-    todayTip(now),
+    getMe().then((me) => todayTip(now, me)),
   ]);
   const track = status ? await monthTrack(status, now) : [];
 
@@ -290,7 +291,7 @@ export default async function Home() {
         <section>
           <h2 className="section-title">
             다가오는 결혼 준비 결제
-            <Link href="/wedding" className="text-[13px] font-semibold text-save">
+            <Link href="/wedding/budget" className="text-[13px] font-semibold text-save">
               예산표
             </Link>
           </h2>

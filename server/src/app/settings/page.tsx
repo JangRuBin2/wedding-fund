@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { fmtKst, toKst } from "@/lib/time";
-import { deleteRule, saveGoal } from "../actions";
+import { deleteRule, saveGoal, saveProfile, setMe } from "../actions";
+import { getMe } from "@/lib/me";
 import { colorOf } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
@@ -9,12 +10,15 @@ export const dynamic = "force-dynamic";
 const dateInput = (d: Date) => toKst(d).toISOString().slice(0, 10);
 
 export default async function Settings() {
-  const [goal, rules, raws, members] = await Promise.all([
+  const [goal, rules, raws, members, profiles, me] = await Promise.all([
     prisma.goal.findUnique({ where: { id: 1 } }),
     prisma.merchantRule.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
     prisma.rawNotification.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
-    prisma.member.findMany(),
+    prisma.member.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.profile.findMany(),
+    getMe(),
   ]);
+  const triValue = (v: boolean | null | undefined) => (v === true ? "yes" : v === false ? "no" : "");
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const now = new Date();
@@ -57,6 +61,85 @@ export default async function Settings() {
           <button className="btn col-span-2">목표 저장</button>
         </form>
       </section>
+
+      {members.length > 0 && (
+        <section>
+          <h2 className="section-title">
+            이 기기는 누구
+            <small>체크리스트에 체크한 사람으로 남아요</small>
+          </h2>
+          <form action={setMe} className="card flex flex-wrap gap-2 !py-3.5">
+            {members.map((m) => (
+              <button
+                key={m.id}
+                name="name"
+                value={m.name}
+                className={`btn-ghost ${me === m.name ? "!bg-save !text-white" : "!bg-paper"}`}
+                aria-pressed={me === m.name}
+              >
+                {m.name}
+              </button>
+            ))}
+          </form>
+        </section>
+      )}
+
+      {members.length > 0 && (
+        <section>
+          <h2 className="section-title">
+            팁 맞춤 정보
+            <small>모르면 비워 두세요</small>
+          </h2>
+          <div className="space-y-3">
+            {members.map((m) => {
+              const p = profiles.find((x) => x.name === m.name);
+              const Tri = ({ name, label }: { name: string; label: string }) => (
+                <label className="space-y-1">
+                  <span className="label">{label}</span>
+                  <select name={name} defaultValue={triValue(p?.[name as "married"])} className="input">
+                    <option value="">모름</option>
+                    <option value="yes">예</option>
+                    <option value="no">아니요</option>
+                  </select>
+                </label>
+              );
+              return (
+                <details key={m.id} className="card group" open={!p && m.name === me}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+                    {m.name}
+                    <span className="text-[12px] font-medium text-sub">{p ? "입력됨 · 고치기" : "입력하기"}</span>
+                  </summary>
+                  <form action={saveProfile} className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3">
+                    <input type="hidden" name="name" value={m.name} />
+                    <label className="space-y-1">
+                      <span className="label">출생 연도</span>
+                      <input name="birthYear" inputMode="numeric" placeholder="1995" defaultValue={p?.birthYear ?? ""} className="input num" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="label">지금 사는 집</span>
+                      <select name="housing" defaultValue={p?.housing ?? ""} className="input">
+                        <option value="">모름</option>
+                        <option>월세</option>
+                        <option>전세</option>
+                        <option>자가</option>
+                        <option>가족과 함께</option>
+                      </select>
+                    </label>
+                    <Tri name="smallCompany" label="중소기업 다녀요" />
+                    <Tri name="householder" label="세대주예요" />
+                    <Tri name="changedJobThisYear" label="올해 이직·퇴사했어요" />
+                    <Tri name="married" label="혼인신고 했어요" />
+                    <button className="btn col-span-2">저장</button>
+                  </form>
+                </details>
+              );
+            })}
+          </div>
+          <p className="mt-2 px-1 text-[12px] leading-relaxed text-sub">
+            매일 아침 팁에서 해당 없는 내용을 빼는 데만 써요. 예를 들어 자가면 월세·전세 팁을, 짝수 해에 홀수 연도생이면 건강검진 팁을 빼요
+          </p>
+        </section>
+      )}
 
       <section>
         <h2 className="section-title">폰 앱 연결</h2>

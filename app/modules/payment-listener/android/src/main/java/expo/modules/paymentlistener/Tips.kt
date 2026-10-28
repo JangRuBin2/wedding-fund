@@ -22,6 +22,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -67,7 +68,9 @@ object Tips {
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
     if (!force && store.lastTipDay == today) return "오늘 팁은 이미 보냈어요"
 
-    val conn = URL("${store.serverUrl}/api/tips/today").openConnection() as HttpURLConnection
+    // 이름을 같이 보내면 서버가 그 사람 정보(설정 → 팁 맞춤 정보)로 팁을 거름
+    val member = URLEncoder.encode(store.memberName, "UTF-8")
+    val conn = URL("${store.serverUrl}/api/tips/today?member=$member").openConnection() as HttpURLConnection
     val body = try {
       conn.connectTimeout = 10_000
       conn.readTimeout = 15_000
