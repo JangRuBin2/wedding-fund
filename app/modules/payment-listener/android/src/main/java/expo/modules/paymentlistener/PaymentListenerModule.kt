@@ -23,6 +23,7 @@ class PaymentListenerModule : Module() {
     OnCreate {
       val ctx = appContext.reactContext ?: return@OnCreate
       try { Tips.schedule(ctx) } catch (e: Exception) { android.util.Log.w("PaymentListener", "tip schedule failed", e) }
+      try { Updater.schedule(ctx) } catch (e: Exception) { android.util.Log.w("PaymentListener", "update schedule failed", e) }
     }
 
     Function("isPermissionGranted") {
@@ -76,6 +77,22 @@ class PaymentListenerModule : Module() {
     Function("setTipsEnabled") { enabled: Boolean ->
       Store(context).tipsEnabled = enabled
       Tips.reschedule(context)
+    }
+
+    /** 지금 버전과 GitHub 최신 버전 */
+    AsyncFunction("checkUpdate") {
+      val current = Updater.currentVersion(context)
+      val latest = try { Updater.latest()?.version } catch (e: Exception) { null }
+      mapOf("current" to current, "latest" to (latest ?: 0), "available" to (latest != null && latest > current))
+    }
+
+    /** 새 버전 받아서 설치 (확인 창이 필요하면 바로 띄움) */
+    AsyncFunction("installUpdate") {
+      try {
+        Updater.checkAndInstall(context, interactive = true)
+      } catch (e: Exception) {
+        "업데이트하지 못했어요. ${e.message ?: e.javaClass.simpleName}"
+      }
     }
 
     /** 설정 화면의 '지금 하나 받아 보기' */

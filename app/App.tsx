@@ -52,12 +52,19 @@ export default function App() {
   const [editing, setEditing] = useState(!configured);
   const [tipsOn, setTipsOn] = useState(() => PaymentListener.getTipsEnabled());
   const [tipMsg, setTipMsg] = useState("");
+  const [update, setUpdate] = useState<{ current: number; latest: number; available: boolean } | null>(null);
+  const [updateMsg, setUpdateMsg] = useState("");
 
   const refresh = useCallback(() => {
     setGranted(PaymentListener.isPermissionGranted());
     setBattery(PaymentListener.isIgnoringBatteryOptimizations());
     setLog(PaymentListener.getLog());
     setQueued(PaymentListener.getQueueSize());
+  }, []);
+
+  useEffect(() => {
+    // 새 버전 확인 (GitHub Releases). 실패해도 조용히 넘어감
+    PaymentListener.checkUpdate().then(setUpdate).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -136,6 +143,25 @@ export default function App() {
           <Text style={{ color: c.sub, fontSize: 12 }}>함께 모으는 우리의 봄</Text>
         </View>
       </View>
+
+      {update?.available && (
+        <Card c={c}>
+          <Text style={[s.cardTitle, { color: c.ink }]}>새 버전 #{update.latest}이 있어요</Text>
+          <Text style={[s.hint, { color: c.sub }]}>
+            지금은 #{update.current}이에요. 누르면 받아서 바로 설치해요. 지우지 않아도 되고 설정도 그대로예요. 처음 한 번은 &apos;이 출처 허용&apos;을 켜 주세요
+          </Text>
+          <Btn
+            c={c}
+            onPress={async () => {
+              setUpdateMsg("받는 중이에요…");
+              setUpdateMsg(await PaymentListener.installUpdate());
+            }}
+          >
+            지금 업데이트
+          </Btn>
+          {!!updateMsg && <Text style={[s.hint, { color: c.sub, textAlign: "center" }]}>{updateMsg}</Text>}
+        </Card>
+      )}
 
       <LinearGradient colors={c.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
         <View style={s.row}>
@@ -283,6 +309,12 @@ export default function App() {
       <Text style={[s.hint, { color: c.sub, textAlign: "center", paddingHorizontal: 12 }]}>
         금액과 결제·입금 같은 단어가 함께 있는 알림만 서버로 보내요. 다른 알림은 폰 밖으로 나가지 않아요
       </Text>
+      {!!update?.current && (
+        <Text style={[s.hint, { color: c.faint, textAlign: "center" }]}>
+          버전 #{update.current}
+          {update.available ? "" : " · 최신 버전이에요"}
+        </Text>
+      )}
     </ScrollView>
   );
 }

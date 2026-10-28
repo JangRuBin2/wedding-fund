@@ -25,6 +25,8 @@ type Native = {
   getTipsEnabled(): boolean;
   setTipsEnabled(enabled: boolean): void;
   sendTipNow(): Promise<string>;
+  checkUpdate(): Promise<{ current: number; latest: number; available: boolean }>;
+  installUpdate(): Promise<string>;
 };
 
 const Native = requireNativeModule<Native>("PaymentListener");

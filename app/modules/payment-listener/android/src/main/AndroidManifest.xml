@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- 앱 스스로 새 버전 설치 (GitHub Releases) -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
   <application>
     <!-- 사용자가 '알림 접근' 허용하면 OS가 이 서비스에 모든 알림을 넘겨줌 -->
@@ -13,5 +15,6 @@
         <action android:name="android.service.notification.NotificationListenerService" />
       </intent-filter>
     </service>
+    <receiver android:name="expo.modules.paymentlistener.UpdateReceiver" android:exported="false" />
   </application>
 </manifest>
