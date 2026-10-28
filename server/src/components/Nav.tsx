@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 const I = {
@@ -42,7 +42,7 @@ export function Nav() {
               <Link
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 rounded-[18px] pt-2 pb-1.5 text-[11px] font-semibold md:flex-row md:justify-center md:gap-1.5 md:py-2.5 md:text-[13px] ${
+                className={`relative flex flex-col items-center gap-1 rounded-[18px] pt-2 pb-1.5 text-[11px] font-semibold md:flex-row md:justify-center md:gap-1.5 md:py-2.5 md:text-[13px] ${
                   active ? "bg-save-soft text-save" : "text-faint"
                 }`}
               >
@@ -61,6 +61,7 @@ export function Nav() {
                   {t.icon}
                 </svg>
                 {t.label}
+                <Pending />
               </Link>
             </li>
           );
@@ -68,4 +69,10 @@ export function Nav() {
       </ul>
     </nav>
   );
+}
+
+/** 누른 탭에 바로 표시 (페이지가 다 그려질 때까지) */
+function Pending() {
+  const { pending } = useLinkStatus();
+  return pending ? <span className="absolute inset-0 animate-pulse rounded-[18px] bg-save-soft/70" aria-hidden /> : null;
 }
