@@ -17,7 +17,7 @@
 ```
 
 ```
-server/   Next.js 15 + Prisma 7 + Postgres  (대시보드 + API + 파서 + 분석)
+server/   Next.js 16 + Prisma 7 + Postgres  (대시보드 + API + 파서 + 분석)
 app/      Expo SDK 58 + 로컬 네이티브 모듈 modules/payment-listener (Kotlin)
 ```
 

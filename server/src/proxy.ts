@@ -7,7 +7,7 @@ import { kakaoEnabled, readSession, SESSION_COOKIE } from "@/lib/session";
  * - 없으면 예전처럼 Basic Auth (아이디 아무거나, 비밀번호 = DASHBOARD_PASSWORD)
  * /api/ingest, /api/tips, /api/cron 은 각자 토큰으로 인증하므로 제외.
  */
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   if (kakaoEnabled()) return kakao(req);
 
   const password = process.env.DASHBOARD_PASSWORD;
