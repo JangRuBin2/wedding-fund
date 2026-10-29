@@ -11,11 +11,18 @@ import { PAY_METHODS, PAYERS, WEDDING_CATEGORIES } from "@/lib/wedding-meta";
 import { currentSession, getMe, ME_COOKIE } from "@/lib/me";
 import { cookies } from "next/headers";
 import { assertMine } from "@/lib/ownership";
+import { safeBack } from "@/lib/back";
 import { categorizeByRules, SAVINGS_CATEGORY, statusForCategory } from "@/lib/categories";
 
 function refresh() {
-  for (const p of ["/", "/transactions", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
+  for (const p of ["/", "/patterns", "/feedback", "/settings"]) revalidatePath(p);
+  revalidatePath("/transactions", "layout"); // 목록과 직접 입력·고치기 화면
   revalidatePath("/wedding", "layout"); // 할 일·예산·이벤트 세부 전부
+}
+
+/** 작성 화면에서 저장한 뒤 보던 화면으로 (폼의 back 값, 없으면 fallback) */
+function goBack(form: FormData, fallback: string): never {
+  redirect(safeBack(form.get("back"), fallback));
 }
 
 /** 카테고리/가맹점/상태 수정. learn=on이면 같은 가맹점 과거·미래 건 모두 이 카테고리로 */
@@ -35,6 +42,7 @@ export async function updateTransaction(form: FormData) {
 
   if (learn && category) await learnCategory(tx, category);
   refresh();
+  goBack(form, "/transactions");
 }
 
 /** 같은 가맹점 규칙 저장 + 과거 건까지 일괄 적용 */
@@ -83,11 +91,12 @@ export async function setStatus(id: string, status: "CONFIRMED" | "IGNORED") {
   refresh();
 }
 
-export async function deleteTransaction(id: string) {
+export async function deleteTransaction(id: string, back?: string) {
   if (!(await assertMine(id))) return;
   await prisma.rawNotification.updateMany({ where: { transactionId: id }, data: { transactionId: null } });
   await prisma.transaction.delete({ where: { id } });
   refresh();
+  redirect(safeBack(back, "/transactions"));
 }
 
 /** 현금 지출, 알림 안 오는 수입(월급 등) 수동 입력 */
@@ -116,6 +125,7 @@ export async function addManual(form: FormData) {
     },
   });
   refresh();
+  goBack(form, "/transactions");
 }
 
 export async function saveGoal(form: FormData) {
@@ -164,6 +174,7 @@ export async function addWeddingItem(form: FormData) {
     },
   });
   refresh();
+  redirect("/wedding/budget");
 }
 
 export async function updateWeddingItem(form: FormData) {
@@ -180,6 +191,7 @@ export async function updateWeddingItem(form: FormData) {
     },
   });
   refresh();
+  redirect("/wedding/budget");
 }
 
 /** 남은 돈 전부 냄 */
@@ -187,11 +199,13 @@ export async function settleWeddingItem(id: string) {
   const item = await prisma.weddingItem.findUnique({ where: { id } });
   if (item) await prisma.weddingItem.update({ where: { id }, data: { paid: Math.max(item.paid, item.budget) } });
   refresh();
+  redirect("/wedding/budget");
 }
 
 export async function deleteWeddingItem(id: string) {
   await prisma.weddingItem.delete({ where: { id } });
   refresh();
+  redirect("/wedding/budget");
 }
 
 export async function addWeddingTemplate() {
@@ -260,18 +274,19 @@ export async function updateStep(form: FormData) {
     data: {
       title: String(form.get("title") || "").trim() || undefined,
       targetDate: dateOrNull(form.get("targetDate")),
-      note: String(form.get("note") || "").trim() || null,
     },
   });
   refresh();
+  redirect(`/wedding/event/${id}`);
 }
 
 export async function addWeddingStep(form: FormData) {
   const title = String(form.get("title") || "").trim();
   if (!title) return;
   const last = await prisma.weddingStep.findFirst({ orderBy: { order: "desc" } });
-  await prisma.weddingStep.create({ data: { title, order: (last?.order ?? 0) + 1, targetDate: dateOrNull(form.get("targetDate")) } });
+  const step = await prisma.weddingStep.create({ data: { title, order: (last?.order ?? 0) + 1, targetDate: dateOrNull(form.get("targetDate")) } });
   refresh();
+  redirect(`/wedding/event/${step.id}`); // 만든 이벤트로 가서 체크리스트·결제를 이어서 채움
 }
 
 export async function deleteWeddingStep(id: string) {
@@ -286,6 +301,7 @@ export async function addTask(form: FormData) {
   if (!content) return;
   await prisma.weddingTask.create({ data: { stepId, content, dueDate: dateOrNull(form.get("dueDate")), createdBy: await getMe() } });
   refresh();
+  redirect(`/wedding/event/${stepId}`);
 }
 
 /** 그 단계의 추천 할 일 넣기. 이미 같은 내용이 있으면 건너뜀 */
@@ -317,8 +333,9 @@ export async function toggleTask(id: string) {
 }
 
 export async function deleteTask(id: string) {
-  await prisma.weddingTask.delete({ where: { id } });
+  const task = await prisma.weddingTask.delete({ where: { id } });
   refresh();
+  redirect(`/wedding/event/${task.stepId}`);
 }
 
 /** 이 기기는 누구 (체크한 사람 기록용) */
@@ -351,42 +368,66 @@ export async function saveProfile(form: FormData) {
 
 // ── 이벤트 세부: 할 일 날짜, 메모, 결제관리 ──
 
-export async function setTaskDate(form: FormData) {
-  await prisma.weddingTask.update({ where: { id: String(form.get("id")) }, data: { dueDate: dateOrNull(form.get("dueDate")) } });
+export async function updateTask(form: FormData) {
+  const task = await prisma.weddingTask.update({
+    where: { id: String(form.get("id")) },
+    data: {
+      content: String(form.get("content") || "").trim() || undefined,
+      dueDate: dateOrNull(form.get("dueDate")),
+    },
+  });
   refresh();
+  redirect(`/wedding/event/${task.stepId}`);
 }
 
 export async function saveStepMemo(form: FormData) {
+  const id = String(form.get("id"));
   await prisma.weddingStep.update({
-    where: { id: String(form.get("id")) },
+    where: { id },
     data: { note: String(form.get("note") || "").trim().slice(0, 5000) || null },
   });
   refresh();
+  redirect(`/wedding/event/${id}`);
 }
 
 const oneOf = <T extends string>(v: FormDataEntryValue | null, keys: readonly T[], fallback: T): T =>
   (keys as readonly string[]).includes(String(v)) ? (String(v) as T) : fallback;
 const CATEGORY_NAMES = WEDDING_CATEGORIES.map((c) => c.name);
 
-export async function addPayment(form: FormData) {
+/** 결제 추가·수정 폼에서 공통으로 읽는 값. 내용이나 금액이 없으면 null */
+function paymentFields(form: FormData) {
   const content = String(form.get("content") || "").trim();
   const amount = won(form.get("amount"));
-  if (!content || !amount) return;
+  if (!content || !amount) return null;
   const payer = oneOf(form.get("payer"), Object.keys(PAYERS) as (keyof typeof PAYERS)[], "GROOM");
-  await prisma.weddingPayment.create({
-    data: {
-      stepId: String(form.get("stepId") || "") || null,
-      category: oneOf(form.get("category"), CATEGORY_NAMES, "기타"),
-      content: content.slice(0, 100),
-      amount,
-      method: oneOf(form.get("method"), Object.keys(PAY_METHODS) as (keyof typeof PAY_METHODS)[], "CARD"),
-      payer,
-      payerNote: payer === "OTHER" ? String(form.get("payerNote") || "").trim().slice(0, 30) || null : null,
-      paidAt: dateOrNull(form.get("paidAt")),
-      createdBy: await getMe(),
-    },
-  });
+  return {
+    category: oneOf(form.get("category"), CATEGORY_NAMES, "기타"),
+    content: content.slice(0, 100),
+    amount,
+    method: oneOf(form.get("method"), Object.keys(PAY_METHODS) as (keyof typeof PAY_METHODS)[], "CARD"),
+    payer,
+    payerNote: payer === "OTHER" ? String(form.get("payerNote") || "").trim().slice(0, 30) || null : null,
+    paidAt: dateOrNull(form.get("paidAt")),
+  };
+}
+
+const paymentBack = (stepId: string | null) => (stepId ? `/wedding/event/${stepId}` : "/wedding/budget");
+
+export async function addPayment(form: FormData) {
+  const data = paymentFields(form);
+  if (!data) return;
+  const stepId = String(form.get("stepId") || "") || null;
+  await prisma.weddingPayment.create({ data: { ...data, stepId, createdBy: await getMe() } });
   refresh();
+  redirect(paymentBack(stepId));
+}
+
+export async function updatePayment(form: FormData) {
+  const data = paymentFields(form);
+  if (!data) return;
+  const p = await prisma.weddingPayment.update({ where: { id: String(form.get("id")) }, data });
+  refresh();
+  redirect(paymentBack(p.stepId));
 }
 
 /** 결제 예정 → 냈어요 (카드로 표시, 날짜는 오늘) */
@@ -396,8 +437,9 @@ export async function markPaymentPaid(id: string) {
 }
 
 export async function deletePayment(id: string) {
-  await prisma.weddingPayment.delete({ where: { id } });
+  const p = await prisma.weddingPayment.delete({ where: { id } });
   refresh();
+  redirect(paymentBack(p.stepId));
 }
 
 /** 예산 배분 저장 (예산 탭의 슬라이더). 금액은 원 단위 */

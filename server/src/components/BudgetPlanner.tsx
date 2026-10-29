@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { WEDDING_CATEGORIES } from "@/lib/wedding-meta";
 import { saveBudgetPlan } from "@/app/actions";
 
@@ -10,7 +11,8 @@ const man = (won: number) => Math.round(won / 10_000).toLocaleString("ko-KR");
 
 /**
  * 총예산을 정하고 구분별로 슬라이더로 나눔. 하나를 올리면 잠그지 않은 나머지가 비율대로 줄어들어서
- * 합계는 항상 100%. 금액은 만원 단위로 맞추고 남는 자투리는 마지막 구분에 붙임
+ * 합계는 항상 100%. 금액은 만원 단위로 맞추고 남는 자투리는 마지막 구분에 붙임.
+ * 저장하면 예산 탭(보기 화면)으로 돌아감
  */
 export function BudgetPlanner({ initial }: { initial: Record<string, number> }) {
   const initialTotal = NAMES.reduce((s, n) => s + (initial[n] ?? 0), 0);
@@ -23,6 +25,7 @@ export function BudgetPlanner({ initial }: { initial: Record<string, number> }) 
   const [locked, setLocked] = useState<Set<Names>>(new Set());
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(true);
+  const router = useRouter();
 
   const amounts = useMemo(() => {
     const out = {} as Record<Names, number>;
@@ -131,9 +134,10 @@ export function BudgetPlanner({ initial }: { initial: Record<string, number> }) 
         onClick={() => start(async () => {
           await saveBudgetPlan(amounts);
           setSaved(true);
+          router.push("/wedding/budget");
         })}
       >
-        {pending ? "저장하는 중…" : saved ? "저장됐어요" : "이대로 나누기"}
+        {pending ? "저장하는 중…" : saved ? "바꾼 게 없어요" : "이대로 나누기"}
       </button>
     </div>
   );

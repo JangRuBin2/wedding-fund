@@ -434,7 +434,7 @@ export default async function Home() {
 // 하단 탭과 같은 선 아이콘
 const QUICK = [
   {
-    href: "/transactions?add=1",
+    href: "/transactions/new?back=%2F",
     label: "직접 기록",
     bg: "var(--color-save-soft)",
     icon: <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16zM13.5 6.5l4 4" />,

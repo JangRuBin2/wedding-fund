@@ -110,6 +110,13 @@ npx eas build -p android --profile preview   # 클라우드에서 APK 빌드 →
 - **중복/취소 처리**: 같은 결제가 앱 푸시+문자로 오면 1건으로, 승인취소는 원 결제에 취소 표시
 - 자동으로 못 잡은 내 계좌 간 이체는 내역에서 카테고리를 **저축**으로 바꾸면 집계 제외됨
 
+## 화면 원칙: 보기와 작성 분리
+
+보기 화면(홈, 내역, 할 일, 이벤트, 예산)에는 입력 칸이 없어요. 체크, '냈어요'처럼 한 번 누르면 끝나는 동작만 바로 되고,
+추가·수정은 `+ …`·`수정` 링크로 작성 화면(`/wedding/new`, `/wedding/event/[id]/edit|memo|task/new|payment/new`, `/wedding/task/[id]`,
+`/wedding/payment/[id]`, `/wedding/budget/item/new|[id]`, `/wedding/budget/plan`, `/transactions/new`, `/transactions/[id]`)으로 넘어가요.
+저장하면 보던 화면으로 돌아가고, 삭제는 수정 화면 맨 아래에만 있어요.
+
 ## 카카오 로그인 (선택)
 
 넣으면 대시보드 비밀번호 대신 카카오 로그인으로 잠김. 처음 로그인한 사람이 관리자, 그다음 사람은 관리자가 **설정 → 로그인 계정**에서 승인해야 들어옴.

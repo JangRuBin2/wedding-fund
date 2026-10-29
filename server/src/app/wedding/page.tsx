@@ -9,10 +9,11 @@ import { kakaoEnabled } from "@/lib/session";
 import { kstParts, manwon, toKst, DAY } from "@/lib/time";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WeddingHeader } from "@/components/WeddingTabs";
+import { LinkPending } from "@/components/LinkPending";
 import { ViewSwitch } from "@/components/ViewSwitch";
 import { OptimisticCheck } from "@/components/OptimisticCheck";
 import { WeddingCalendar, type CalItem } from "@/components/WeddingCalendar";
-import { addWeddingStep, createWeddingSteps, fillStepDates, setMe, toggleStep } from "../actions";
+import { createWeddingSteps, fillStepDates, setMe, toggleStep } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -188,14 +189,10 @@ export default async function WeddingTodoPage({ searchParams }: { searchParams: 
             ]}
           />
 
-          <section>
-            <h2 className="section-title">이벤트 추가</h2>
-            <form action={addWeddingStep} className="card grid grid-cols-2 gap-2">
-              <input name="title" placeholder="예: 드레스 투어" required className="input col-span-2" />
-              <input name="targetDate" type="date" className="input col-span-2" />
-              <SubmitButton pendingText="추가 중…" className="col-span-2">추가</SubmitButton>
-            </form>
-          </section>
+          <Link href="/wedding/new" className="btn relative block w-full text-center">
+            + 이벤트 추가
+            <LinkPending />
+          </Link>
         </>
       )}
     </main>
