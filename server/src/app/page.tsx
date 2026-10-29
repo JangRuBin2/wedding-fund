@@ -10,7 +10,8 @@ import { CategoryBreakdown, DailyBars } from "@/components/Charts";
 import { TxRow } from "@/components/TxRow";
 import { Logo } from "@/components/Logo";
 import { PHOTOS, photoUrl } from "@/lib/photos";
-import { todayTip } from "@/lib/tips";
+import { newsUrl, tipShareText, todayTip } from "@/lib/tips";
+import { ShareButton } from "@/components/ShareButton";
 import { getMe } from "@/lib/me";
 import { mineWhere } from "@/lib/ownership";
 
@@ -224,10 +225,23 @@ export default async function Home() {
             <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9V16h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z" />
           </svg>
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-save">오늘의 팁 · {tip.cat}</p>
           <p className="mt-0.5 text-[15px] leading-snug font-bold">{tip.title}</p>
           <p className="mt-1 text-[13px] leading-relaxed text-sub">{tip.body}</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] font-semibold">
+            {tip.link && (
+              <a href={tip.link.url} target="_blank" rel="noopener noreferrer" className="text-save">
+                {tip.link.label} 바로가기 ↗
+              </a>
+            )}
+            {tip.news && (
+              <a href={newsUrl(tip.news)} target="_blank" rel="noopener noreferrer" className="text-save">
+                관련 뉴스 ↗
+              </a>
+            )}
+            <ShareButton title={tip.title} text={tipShareText(tip)} />
+          </div>
         </div>
       </section>
 

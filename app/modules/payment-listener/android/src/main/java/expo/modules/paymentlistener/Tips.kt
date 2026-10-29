@@ -5,7 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -32,6 +34,7 @@ import java.util.concurrent.TimeUnit
 /**
  * 매일 아침(8:30쯤) 서버의 /api/tips/today 를 받아 알림으로 띄움.
  * 팁 내용과 고르는 규칙은 서버에 있어서 앱 업데이트 없이 바꿀 수 있음.
+ * 서버가 공식 사이트(link)·관련 뉴스(newsUrl)·공유 글(shareText)을 주면 알림에 버튼으로 붙임.
  */
 object Tips {
   private const val TAG = "PaymentListener"
@@ -84,12 +87,53 @@ object Tips {
       conn.disconnect()
     }
     val tip = JSONObject(body)
-    if (!show(context, tip.optString("title"), tip.optString("body"))) return "알림 권한을 허용해 주세요"
+    val title = tip.optString("title")
+    val text = tip.optString("body")
+    val link = tip.optJSONObject("link")
+    val shown = show(
+      context,
+      title,
+      text,
+      link?.str("label"),
+      link?.str("url"),
+      tip.str("newsUrl"),
+      // 예전 서버는 shareText를 안 줘서 제목·본문으로 만듦
+      tip.str("shareText") ?: "[모아봄 오늘의 팁] $title\n$text",
+    )
+    if (!shown) return "알림 권한을 허용해 주세요"
     store.lastTipDay = today
     return "오늘의 팁을 보냈어요"
   }
 
-  private fun show(context: Context, title: String, body: String): Boolean {
+  /** 값이 없거나 null이면 null (optString은 null을 "null" 글자로 돌려줘서) */
+  private fun JSONObject.str(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
+
+  /** https 주소만 브라우저로 엶 */
+  private fun viewIntent(context: Context, url: String?, requestCode: Int): PendingIntent? {
+    if (url == null || !url.startsWith("https://")) return null
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+  }
+
+  /** 카톡 등으로 보내는 공유 시트 */
+  private fun shareIntent(context: Context, title: String, shareText: String): PendingIntent {
+    val send = Intent(Intent.ACTION_SEND)
+      .setType("text/plain")
+      .putExtra(Intent.EXTRA_SUBJECT, title)
+      .putExtra(Intent.EXTRA_TEXT, shareText)
+    val chooser = Intent.createChooser(send, "팁 공유하기").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    return PendingIntent.getActivity(context, 3, chooser, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+  }
+
+  private fun show(
+    context: Context,
+    title: String,
+    body: String,
+    linkLabel: String?,
+    linkUrl: String?,
+    newsUrl: String?,
+    shareText: String,
+  ): Boolean {
     if (Build.VERSION.SDK_INT >= 33 &&
       ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
     ) return false
@@ -100,14 +144,18 @@ object Tips {
     val open = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
       PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
-    val n = NotificationCompat.Builder(context, CHANNEL)
+    val builder = NotificationCompat.Builder(context, CHANNEL)
       .setSmallIcon(context.applicationInfo.icon)
       .setContentTitle(title)
       .setContentText(body)
       .setStyle(NotificationCompat.BigTextStyle().bigText(body))
       .setContentIntent(open)
       .setAutoCancel(true)
-      .build()
+    // 버튼은 최대 3개: 공식 사이트, 관련 뉴스, 공유
+    viewIntent(context, linkUrl, 1)?.let { builder.addAction(0, if (linkLabel != null) "$linkLabel 열기" else "자세히 보기", it) }
+    viewIntent(context, newsUrl, 2)?.let { builder.addAction(0, "관련 뉴스", it) }
+    builder.addAction(0, "공유", shareIntent(context, title, shareText))
+    val n = builder.build()
     return try {
       NotificationManagerCompat.from(context).notify(NOTIFY_ID, n)
       true
